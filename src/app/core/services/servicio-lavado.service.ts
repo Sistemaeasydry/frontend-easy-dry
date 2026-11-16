@@ -157,6 +157,7 @@ export class ServicioLavadoService {
       agenciaSinAprobador: s.agenciaSinAprobador === true,
       anuladoPorId: s.anuladoPorId || null,
       anuladoEn: s.anuladoEn || null,
+      anuladoPorNombre: s.anuladoPorNombre || null,
       motivoAnulacion: s.motivoAnulacion || null,
       // Nombre/SKU/unidad: se usa el snapshot congelado al momento del consumo
       // (sobrevive a que el producto cambie de nombre/SKU después). Los registros
