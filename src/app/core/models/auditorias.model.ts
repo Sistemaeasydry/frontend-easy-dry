@@ -44,6 +44,7 @@ export const TIPOS_INSPECCION: { id: string; nombre: string }[] = [
   { id: 'NOVEDADES', nombre: 'Novedades' },
   { id: 'MANTENIMIENTO_COMERCIAL', nombre: 'Mantenimiento comercial' },
   { id: 'COLISION', nombre: 'Colisión' },
+  { id: 'REPARACION', nombre: 'Reparación' },
 ];
 export const CATEGORIAS_NOVEDAD: { id: string; nombre: string }[] = [
   { id: 'INFRAESTRUCTURA', nombre: 'Infraestructura' },

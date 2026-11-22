@@ -32,6 +32,7 @@ import { FirmaImagenComponent } from '../shared/firma-imagen.component';
 import { SelectSearchComponent } from '../../../shared/components/select-search/select-search.component';
 import { descargarPdfInforme } from './informe-pdf';
 
+import { nombreCompleto } from '../../../core/utils/nombre-persona';
 interface Paso { id: number; titulo: string; corto: string; icono: string }
 
 const aLocal = (iso: string) => {
@@ -498,7 +499,7 @@ export class InformeFormComponent implements OnInit {
   readonly categorias = CATEGORIAS_NOVEDAD;
   readonly calificaciones = CALIFICACIONES;
   readonly puedeCalificar = this.auth.puede('informes.firmar');
-  readonly usuarioNombre = (() => { const u = this.auth.getCurrentUser(); return u ? `${u.nombre} ${u.apellido}`.trim() : ''; })();
+  readonly usuarioNombre = (() => { const u = this.auth.getCurrentUser(); return u ? nombreCompleto(u) : ''; })();
 
   paso = 1;
   cargando = true;
