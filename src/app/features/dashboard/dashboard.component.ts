@@ -30,6 +30,7 @@ import { DashboardChartData } from '../../core/models/dashboard.model';
 import { Observable, Subscription, forkJoin, tap } from 'rxjs';
 
 
+import { nombreCompleto } from '../../core/utils/nombre-persona';
 /** Qué panel ve el usuario. Se decide por los permisos del rol (los mismos que exige el servidor), no por su nombre. */
 export type VistaDashboard = 'taller' | 'especiales' | 'bodega' | 'ejecutivo' | 'ninguna';
 
@@ -1355,7 +1356,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const user = this.auth.getCurrentUser();
-    this.userName = user ? `${user.nombre} ${user.apellido}`.trim() : 'Usuario';
+    this.userName = user ? nombreCompleto(user) : 'Usuario';
     this.rolLabel = ROLE_LABELS[user?.role as keyof typeof ROLE_LABELS] || user?.rolNombre || 'Colaborador';
     this.contextLabel = (user?.ambito === 'REGION' ? user?.region : (user?.sucursal || user?.sucursalNombre)) || 'Red EasyDry®';
 

@@ -31,6 +31,7 @@ import { ConsultaAgencias } from '../../core/services/sucursal.service';
 import { FUNCION, funcionesDeRol } from '../../core/utils/funciones-rol';
 import { RrhhUbicacionSitioComponent } from '../rrhh/rrhh-ubicacion-sitio.component';
 
+import { nombreCompleto } from '../../core/utils/nombre-persona';
 /** Listas de referencia de la pantalla de agencias; cada pestaña pide solo las suyas. */
 type GrupoReferencia = 'regiones' | 'marcas' | 'sucursales' | 'catalogo' | 'usuarios';
 const TODAS_LAS_REFERENCIAS: GrupoReferencia[] = ['regiones', 'marcas', 'sucursales', 'catalogo', 'usuarios'];
@@ -710,7 +711,7 @@ const TODAS_LAS_REFERENCIAS: GrupoReferencia[] = ['regiones', 'marcas', 'sucursa
                         </div>
                       }
                       <div>
-                        <h4 class="font-bold text-sm text-slate-900 leading-tight">{{ ger.nombre }} {{ ger.apellido }}</h4>
+                        <h4 class="font-bold text-sm text-slate-900 leading-tight">{{ nombreCompleto(ger) }}</h4>
                         @if (ger.email) { <p class="text-xs text-slate-500 truncate">{{ ger.email }}</p> }
                       </div>
                     </div>
@@ -803,7 +804,7 @@ const TODAS_LAS_REFERENCIAS: GrupoReferencia[] = ['regiones', 'marcas', 'sucursa
               class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800">
               <option [ngValue]="0" disabled>Selecciona un usuario con rol Aprobador...</option>
               @for (g of gerentesUsuarios; track g.id) {
-                <option [ngValue]="g.id">{{ g.nombre }} {{ g.apellido }}@if (g.email) { ({{ g.email }}) }</option>
+                <option [ngValue]="g.id">{{ nombreCompleto(g) }}@if (g.email) { ({{ g.email }}) }</option>
               }
             </select>
           </div>
@@ -967,7 +968,7 @@ const TODAS_LAS_REFERENCIAS: GrupoReferencia[] = ['regiones', 'marcas', 'sucursa
                     class="w-full p-2.5 border rounded-xl text-sm font-semibold">
               <option [ngValue]="undefined">— Sin Líder Operador asignado —</option>
               @for (lid of lideresOperadoresUsuarios; track lid.id) {
-                <option [ngValue]="lid.id">{{ lid.nombre }} {{ lid.apellido }}@if (lid.email) { ({{ lid.email }}) }</option>
+                <option [ngValue]="lid.id">{{ nombreCompleto(lid) }}@if (lid.email) { ({{ lid.email }}) }</option>
               }
             </select>
             @if (!lideresOperadoresUsuarios.length) {
@@ -1012,7 +1013,7 @@ const TODAS_LAS_REFERENCIAS: GrupoReferencia[] = ['regiones', 'marcas', 'sucursa
                         class="w-full p-2.5 border border-easydry-green/30 rounded-xl text-sm font-semibold bg-white focus:ring-2 focus:ring-easydry-green/30">
                   <option [ngValue]="undefined">— Seleccione un Aprobador —</option>
                   @for (ger of gerentesUsuarios; track ger.id) {
-                    <option [ngValue]="ger.id">{{ ger.nombre }} {{ ger.apellido }} · {{ ger.sucursalAsignada || 'Red Nacional' }}</option>
+                    <option [ngValue]="ger.id">{{ nombreCompleto(ger) }} · {{ ger.sucursalAsignada || 'Red Nacional' }}</option>
                   }
                 </select>
                 @if (!gerentesUsuarios.length) {
@@ -1196,7 +1197,7 @@ const TODAS_LAS_REFERENCIAS: GrupoReferencia[] = ['regiones', 'marcas', 'sucursa
             <label for="sucursales-f12" class="text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
               <span>
                 <i-lucide aria-hidden="true" name="user-check" class="w-3.5 h-3.5 inline mr-1 text-easydry-blue"></i-lucide>
-                Responsable (Supervisor Regional)
+                Responsable (Coordinador Regional)
               </span>
               @if (formRegion.responsable) {
                 <span class="text-xs font-semibold text-emerald-600 normal-case bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
@@ -1209,10 +1210,10 @@ const TODAS_LAS_REFERENCIAS: GrupoReferencia[] = ['regiones', 'marcas', 'sucursa
               (ngModelChange)="alCambiarSupervisorRegion($event)"
               name="regionRespSelect"
               class="w-full p-2.5 border border-slate-200 rounded-xl text-sm bg-white font-medium focus:ring-2 focus:ring-easydry-blue/30 focus:border-easydry-blue text-slate-800">
-              <option value="">— Seleccione un Supervisor Regional —</option>
+              <option value="">— Seleccione un Coordinador Regional —</option>
               @for (sup of supervisoresUsuarios; track sup.id) {
                 <option [value]="sup.id">
-                  {{ sup.nombre }} {{ sup.apellido }}@if (sup.email) { · {{ sup.email }} }
+                  {{ nombreCompleto(sup) }}@if (sup.email) { · {{ sup.email }} }
                 </option>
               }
             </select>
@@ -1357,6 +1358,7 @@ const TODAS_LAS_REFERENCIAS: GrupoReferencia[] = ['regiones', 'marcas', 'sucursa
   `
 })
 export class SucursalesComponent implements OnInit, OnDestroy {
+  readonly nombreCompleto = nombreCompleto;
   /** Funciones del rol de un usuario de la lista (si la lista no las trae, las del rol oficial por su nombre). */
   private funcionesDeUsuario(u: Usuario): ReadonlySet<string> {
     return u.funciones?.length ? new Set(u.funciones) : funcionesDeRol([], u.rolNombre || u.rol);
@@ -1922,7 +1924,7 @@ export class SucursalesComponent implements OnInit, OnDestroy {
     });
 
     if (lider) {
-      return `${lider.nombre} ${lider.apellido}`.trim() || lider.nombre;
+      return nombreCompleto(lider) || lider.nombre;
     }
     return suc.liderOperador || 'Sin Asignar';
   }
@@ -2360,7 +2362,7 @@ export class SucursalesComponent implements OnInit, OnDestroy {
         supId = region.supervisorId;
       } else if (region.responsable) {
         const found = this.supervisoresUsuarios.find(s =>
-          `${s.nombre} ${s.apellido}`.trim().toLowerCase() === region.responsable?.trim().toLowerCase() ||
+          nombreCompleto(s).toLowerCase() === region.responsable?.trim().toLowerCase() ||
           region.responsable?.toLowerCase().includes(s.nombre.toLowerCase())
         );
         if (found) supId = found.id;
@@ -2380,7 +2382,7 @@ export class SucursalesComponent implements OnInit, OnDestroy {
     }
     const sup = this.supervisoresUsuarios.find(s => String(s.id) === String(supId));
     if (sup) {
-      this.formRegion.responsable = `${sup.nombre} ${sup.apellido}`.trim();
+      this.formRegion.responsable = nombreCompleto(sup);
       this.formRegion.supervisorId = sup.id;
     }
   }

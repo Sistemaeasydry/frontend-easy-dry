@@ -11,6 +11,7 @@ import { PasswordRequisitosComponent } from '../../../shared/components/password
 import { AgenciaConSello, SelloConfig, mensajeError } from '../../../core/models/auditorias.model';
 import { motivoPasswordDebil } from '../../../core/utils/password-politica';
 
+import { nombreCompleto } from '../../../core/utils/nombre-persona';
 /**
  * El logo se achica antes de guardarlo: queda liviano y nítido como marca de agua. Se prueban lados cada vez menores y, si el PNG
  * (que pesa mucho en imágenes con detalle) no cabe, WEBP y JPEG, hasta quedar por debajo del tope que acepta el servidor.
@@ -68,7 +69,7 @@ const MAX_CARACTERES_LOGO = 380_000;
                   @else { <i-lucide name="image" class="w-7 h-7 text-slate-300" aria-hidden="true"></i-lucide> }
                 </div>
                 <div class="min-w-0 flex-1">
-                  <h2 class="font-extrabold text-slate-900 truncate">{{ s.nombre }} {{ s.apellido }}</h2>
+                  <h2 class="font-extrabold text-slate-900 truncate">{{ nombreCompleto(s) }}</h2>
                   <p class="text-xs text-slate-500 mt-0.5">{{ s.logo ? 'Con logo como marca de agua' : 'Sin logo' }}</p>
                   <div class="flex flex-wrap gap-1.5 mt-2">
                     <span class="badge" [ngClass]="s.estado ? 'badge-ok' : 'badge-neutral'">{{ s.estado ? 'Activo' : 'Inactivo' }}</span>
@@ -100,7 +101,7 @@ const MAX_CARACTERES_LOGO = 380_000;
         </div>
       }
 
-      <app-modal [isOpen]="!!selloPass" [title]="'Cambiar contraseña · ' + (selloPass?.nombre ?? '') + ' ' + (selloPass?.apellido ?? '')" icon="lock" size="md" (close)="cerrarPassword()">
+      <app-modal [isOpen]="!!selloPass" [title]="'Cambiar contraseña · ' + nombreCompleto(selloPass)" icon="lock" size="md" (close)="cerrarPassword()">
         <form class="space-y-4" (ngSubmit)="guardarPassword()" autocomplete="off">
           <p class="text-xs text-slate-600">La contraseña anterior deja de servir de inmediato. Si el sello estaba bloqueado por intentos fallidos, se desbloquea. Avísale al jefe de taller su contraseña nueva.</p>
           <div>
@@ -204,6 +205,7 @@ const MAX_CARACTERES_LOGO = 380_000;
   `,
 })
 export class SellosComponent implements OnInit {
+  readonly nombreCompleto = nombreCompleto;
   private readonly api = inject(SellosService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
@@ -274,7 +276,7 @@ export class SellosComponent implements OnInit {
   otroSello(a: AgenciaConSello): string {
     if (!a.selloId || a.selloId === this.editandoId) return '';
     const s = this.sellos.find((x) => x.id === a.selloId);
-    return s ? `${s.nombre} ${s.apellido}` : '';
+    return s ? nombreCompleto(s) : '';
   }
 
   abrirEditar(s: SelloConfig): void {
@@ -313,7 +315,7 @@ export class SellosComponent implements OnInit {
     this.trabajando = true;
     try {
       await firstValueFrom(this.api.editar(s.id, { password: nueva }));
-      this.toast.success('Contraseña cambiada', `La contraseña de ${s.nombre} ${s.apellido} se actualizó.`);
+      this.toast.success('Contraseña cambiada', `La contraseña de ${nombreCompleto(s)} se actualizó.`);
       this.selloPass = null;
       await this.cargar();
     } catch (e) {
@@ -400,7 +402,7 @@ export class SellosComponent implements OnInit {
     this.trabajando = true;
     try {
       await firstValueFrom(this.api.editar(s.id, { estado: s.estado ? 0 : 1 }));
-      this.toast.success(s.estado ? 'Sello desactivado' : 'Sello activado', `${s.nombre} ${s.apellido}.`);
+      this.toast.success(s.estado ? 'Sello desactivado' : 'Sello activado', `${nombreCompleto(s)}.`);
       await this.cargar();
     } catch (e) {
       this.toast.error('No se pudo cambiar el estado', mensajeError(e));

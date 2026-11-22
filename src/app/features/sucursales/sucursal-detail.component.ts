@@ -11,7 +11,9 @@ import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../shared/services/toast.service';
 import { CatalogoServiciosService } from '../../core/services/catalogo-servicios.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ROLE_LABELS } from '../../core/models/roles.model';
 
+import { nombreCompleto } from '../../core/utils/nombre-persona';
 @Component({
   selector: 'app-sucursal-detail',
   standalone: true,
@@ -65,6 +67,20 @@ import { AuthService } from '../../core/services/auth.service';
           </div>
         }
       </div>
+
+      @if (sucursal) {
+        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-easydry">
+          <h2 class="font-extrabold text-slate-900 font-outfit mb-4">Información de la agencia</h2>
+          <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-xs">
+            @for (d of datosAgencia; track d.etiqueta) {
+              <div>
+                <dt class="font-extrabold uppercase text-slate-500 text-[11px]">{{ d.etiqueta }}</dt>
+                <dd class="font-bold text-slate-900 text-sm break-words">{{ d.valor }}</dd>
+              </div>
+            }
+          </dl>
+        </div>
+      }
 
       @if (sucursal) {
         <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-easydry">
@@ -141,7 +157,7 @@ import { AuthService } from '../../core/services/auth.service';
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          @for (b of bahias; track b.id) {
+          @for (b of bahiasActivas; track b.id) {
             <div class="bg-white rounded-2xl border border-slate-100 shadow-easydry p-5 flex flex-col justify-between space-y-4 hover:shadow-easydry-hover transition-shadow">
               
               <div>
@@ -166,11 +182,20 @@ import { AuthService } from '../../core/services/auth.service';
 
                 <!-- Operator Assigned Card -->
                 <div class="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                  <span class="text-[11px] font-extrabold uppercase text-slate-500">Operador Principal:</span>
-                  <div class="flex items-center gap-2">
-                    <i-lucide aria-hidden="true" name="user-check" class="w-4 h-4 text-easydry-green-text"></i-lucide>
-                    <span class="font-bold text-slate-900 text-xs">{{ b.operadorAsignado || 'Sin Asignar' }}</span>
-                  </div>
+                  <span class="text-[11px] font-extrabold uppercase text-slate-500">
+                    Lavadores ({{ (b.operadoresActivos || []).length }}/{{ b.maxLavadoresPorBahia || 1 }}):
+                  </span>
+                  @for (op of b.operadoresActivos || []; track op.id) {
+                    <div class="flex items-center gap-2">
+                      <i-lucide aria-hidden="true" name="user-check" class="w-4 h-4 text-easydry-green-text"></i-lucide>
+                      <span class="font-bold text-slate-900 text-xs">{{ op.nombre }}</span>
+                    </div>
+                  } @empty {
+                    <div class="flex items-center gap-2">
+                      <i-lucide aria-hidden="true" name="user-check" class="w-4 h-4 text-slate-400"></i-lucide>
+                      <span class="font-bold text-slate-900 text-xs">Sin Asignar</span>
+                    </div>
+                  }
                 </div>
 
               </div>
@@ -189,6 +214,34 @@ import { AuthService } from '../../core/services/auth.service';
           }
         </div>
       </div>
+
+      @if (sucursal) {
+        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-easydry">
+          <div class="flex items-center gap-2 mb-1">
+            <h2 class="font-extrabold text-slate-900 font-outfit">Personal de la agencia</h2>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-easydry-blue/10 text-easydry-blue border border-easydry-blue/20">
+              {{ (sucursal.personal || []).length }}
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mb-4">Lavadores y demás personal asignado, con o sin bahía.</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            @for (p of personalOrdenado; track p.id) {
+              <div class="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50">
+                <div class="min-w-0">
+                  <p class="font-bold text-slate-900 text-xs truncate">{{ p.nombre }}</p>
+                  <p class="text-[11px] text-slate-500 font-semibold">{{ etiquetaRol(p.rol) }}</p>
+                </div>
+                <span class="px-2 py-0.5 rounded-full text-[11px] font-extrabold shrink-0"
+                  [ngClass]="p.activo ? 'bg-easydry-green/20 text-easydry-green-text' : 'bg-slate-200 text-slate-600'">
+                  {{ p.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </div>
+            } @empty {
+              <span class="text-xs text-slate-500 font-semibold">Sin personal asignado.</span>
+            }
+          </div>
+        </div>
+      }
 
       <app-modal
         [isOpen]="modalServiciosOpen" size="lg"
@@ -299,6 +352,7 @@ import { AuthService } from '../../core/services/auth.service';
   `
 })
 export class SucursalDetailComponent implements OnInit {
+  readonly nombreCompleto = nombreCompleto;
   sucursal?: Sucursal;
   bahias: Bahia[] = [];
   catalogoServicios: CatalogoServicio[] = [];
@@ -315,6 +369,45 @@ export class SucursalDetailComponent implements OnInit {
 
   // Permisos: los mismos que exige el servidor.
   get puedeEditarServicios(): boolean { return this.auth.puede('agencias.agencias.servicios'); }
+  etiquetaRol(rol: string): string { return ROLE_LABELS[rol] || rol || 'Sin rol'; }
+
+  /** Lavadores primero, luego el resto; activos antes que inactivos. */
+  get personalOrdenado() {
+    return [...(this.sucursal?.personal || [])].sort((a, b) =>
+      Number(b.esLavador) - Number(a.esLavador) || Number(b.activo) - Number(a.activo) || a.nombre.localeCompare(b.nombre));
+  }
+
+  /** Datos generales de la agencia para la tarjeta de información. */
+  get datosAgencia(): Array<{ etiqueta: string; valor: string }> {
+    const s = this.sucursal;
+    if (!s) return [];
+    const tipos: Record<string, string> = { OPERATIVA: 'Operativa', TALLER_NACIONAL: 'Taller nacional', TALLER_REGIONAL: 'Taller regional' };
+    const total = this.bahias.length || s.cantidadBahias || 0;
+    const fecha = s.creadaEl ? new Date(s.creadaEl).toLocaleDateString('es-EC') : '—';
+    const ubicacion = s.latitud != null && s.longitud != null ? `${s.latitud}, ${s.longitud}` : 'Sin configurar';
+    return [
+      { etiqueta: 'Código', valor: s.codigo || '—' },
+      { etiqueta: 'Estado', valor: s.estado || '—' },
+      { etiqueta: 'Tipo de ubicación', valor: tipos[s.tipoUbicacion || 'OPERATIVA'] || s.tipoUbicacion || '—' },
+      { etiqueta: 'Región', valor: s.regionNombre || 'Sin asignar' },
+      { etiqueta: 'Cliente', valor: s.clienteNombre || 'Sin cliente' },
+      { etiqueta: 'Dirección', valor: s.direccion || '—' },
+      { etiqueta: 'Teléfono', valor: s.telefono || '—' },
+      { etiqueta: 'Correo', valor: s.email || '—' },
+      { etiqueta: 'Aprobador', valor: s.gerenteNombre || s.responsable || 'Sin asignar' },
+      { etiqueta: 'Líder operador', valor: s.liderOperadorNombre || 'Sin asignar' },
+      { etiqueta: 'Bahías activas / total', valor: `${this.bahiasActivas.length} / ${total}` },
+      { etiqueta: 'Lavadores máx. por bahía', valor: String(s.maxLavadoresPorBahia || 1) },
+      { etiqueta: 'Varias OT por bahía', valor: s.permiteVariasOtPorBahia === false ? 'No' : 'Sí' },
+      { etiqueta: 'Servicios especiales', valor: s.tieneServiciosEspeciales ? 'Sí' : 'No' },
+      { etiqueta: 'Ubicación (timbradas)', valor: ubicacion },
+      { etiqueta: 'Radio de timbrada', valor: s.radioTimbradaM ? `${s.radioTimbradaM} m` : '—' },
+      { etiqueta: 'Creada', valor: fecha },
+    ];
+  }
+
+  /** Solo las bahías activas: las que sobran al bajar la cantidad quedan inactivas y no se muestran. */
+  get bahiasActivas(): Bahia[] { return this.bahias.filter(b => b.estado !== 'Inactiva'); }
   get puedeEditarBahias(): boolean { return this.auth.puede('agencias.agencias.editar'); }
   get puedeAsignarOperadores(): boolean { return this.auth.puede('agencias.bahias.asignar'); }
 
@@ -445,7 +538,7 @@ export class SucursalDetailComponent implements OnInit {
     };
     this.sucursalService.actualizarSucursal(actualizada, {
       motivo: 'Actualización de servicios de sucursal',
-      realizadoPor: `${user?.nombre || ''} ${user?.apellido || ''}`.trim() || 'Sistema'
+      realizadoPor: nombreCompleto(user) || 'Sistema'
     }).subscribe({
       next: (res) => {
         this.sucursal = res;

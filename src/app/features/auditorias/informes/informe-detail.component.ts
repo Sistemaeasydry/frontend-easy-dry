@@ -29,6 +29,7 @@ import { HistorialInformeComponent } from './historial-informe.component';
 import { InformeAdjuntosComponent } from './informe-adjuntos.component';
 import { descargarPdfInforme } from './informe-pdf';
 
+import { nombreCompleto } from '../../../core/utils/nombre-persona';
 /**
  * Detalle de un informe: encabezado, secciones plegables y las acciones que el servidor permite a este usuario según el estado
  * (`permisos`). Quien no audita lo ve solo en lectura.
@@ -213,7 +214,7 @@ export class InformeDetailComponent implements OnInit {
   /** El servidor decide según el estado; la casilla del rol oculta el botón a quien no tiene el permiso. */
   readonly puedeSeguir = this.auth.puede('informes.seguimiento');
   readonly puedeAprobar = this.auth.puede('informes.aprobar');
-  readonly nombreAprobador = (() => { const u = this.auth.getCurrentUser(); return u ? `${u.nombre} ${u.apellido}`.trim() : ''; })();
+  readonly nombreAprobador = (() => { const u = this.auth.getCurrentUser(); return u ? nombreCompleto(u) : ''; })();
   aprobando = false;
   readonly estadosPlan = ESTADOS_PLAN;
   i: InformeDetalle | null = null;

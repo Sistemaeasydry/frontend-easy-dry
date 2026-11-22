@@ -7,6 +7,7 @@ import { apiUrl } from '../config/env';
 import { OrdenDir, PaginaServidor, normalizarPagina } from '../models/paginacion.model';
 import { PAGE_SIZE_MAX } from '../config/paginacion';
 
+import { nombreCompleto } from '../utils/nombre-persona';
 /** Consulta paginada de servicios de lavado (todo se resuelve en el servidor). */
 export interface ConsultaServicios {
   page?: number;
@@ -81,7 +82,7 @@ export class ServicioLavadoService {
       : [];
     const empleadoNombre = operadoresAsignados.length
       ? operadoresAsignados.map((op: { nombre: string }) => op.nombre).filter(Boolean).join(', ')
-      : s.empleado || s.operadorNombre || (s.operador ? `${s.operador.name || ''} ${s.operador.lastname || ''}`.trim() : (s.operadorRel ? `${s.operadorRel.name || ''} ${s.operadorRel.lastname || ''}`.trim() : ''));
+      : s.empleado || s.operadorNombre || (s.operador ? nombreCompleto(s.operador) : (s.operadorRel ? nombreCompleto(s.operadorRel) : ''));
 
     let duracionMinutos = s.duracionMinutos !== undefined && s.duracionMinutos !== null ? Number(s.duracionMinutos) : null;
     let duracionFormateada = s.duracionFormateada || '';

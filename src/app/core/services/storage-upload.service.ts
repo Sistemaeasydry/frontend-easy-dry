@@ -50,6 +50,7 @@ export type MediaEvidenceType =
   | 'FOTO_TAREA'
   | 'VIDEO_TAREA'
   | 'DOCUMENTO_TAREA'
+  | 'FOTO_DOTACION'
   | 'FOTO_PERFIL';
 
 export interface UploadTicket {

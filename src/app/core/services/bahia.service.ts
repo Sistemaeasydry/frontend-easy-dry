@@ -6,6 +6,7 @@ import { Bahia } from '../models';
 import { normalizarPagina } from '../models/paginacion.model';
 import { apiUrl } from '../config/env';
 
+import { nombreCompleto } from '../utils/nombre-persona';
 @Injectable({
   providedIn: 'root'
 })
@@ -17,7 +18,7 @@ export class BahiaService {
   private mapBackendBahia(b: any): Bahia {
     const rawLastname = b.operadorActual?.lastname || '';
     const cleanLastname = rawLastname.replace(/\(CI:[^)]+\)/, '').replace(/CI:[^)]+/, '').trim();
-    const nombreOp = b.operadorActual ? `${b.operadorActual.name || ''} ${cleanLastname}`.trim() : null;
+    const nombreOp = b.operadorActual ? nombreCompleto(b.operadorActual) : null;
     // `b.operadores` es la relación real (BahiaOperador, activo=true): puede traer más de un lavador
     // si la agencia permite varios por bahía (maxLavadoresPorBahia > 1). `operadorActual`/
     // `operadorActualId` es un campo legacy 1:1 que se pisa con el último asignado — no sirve para
@@ -26,7 +27,7 @@ export class BahiaService {
       ? b.operadores.map((rel: any) => {
           const op = rel.operador || {};
           const lastnameLimpio = String(op.lastname || '').replace(/\(CI:[^)]+\)/, '').replace(/CI:[^)]+/, '').trim();
-          return { id: String(op.id), nombre: `${op.name || ''} ${lastnameLimpio}`.trim() || 'Lavador' };
+          return { id: String(op.id), nombre: nombreCompleto(op) || 'Lavador' };
         })
       : [];
 

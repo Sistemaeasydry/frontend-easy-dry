@@ -7,6 +7,7 @@ import { PaginaServidor, normalizarPagina } from '../models/paginacion.model';
 import { PAGE_SIZE_MAX } from '../config/paginacion';
 import { apiUrl } from '../config/env';
 
+import { nombreCompleto } from '../utils/nombre-persona';
 @Injectable({
   providedIn: 'root'
 })
@@ -21,7 +22,7 @@ export class MovimientoMaquinariaService {
       maquinaCodigo: m.maquinaria?.codigo || m.maquinaCodigo || '',
       maquinaNombre: m.maquinaria?.nombre || m.maquinaNombre || '',
       fecha: m.fecha ? new Date(m.fecha).toISOString().replace('T', ' ').substring(0, 16) : '',
-      usuarioResponsable: m.usuario ? `${m.usuario.name || ''} ${m.usuario.lastname || ''}`.trim() : (m.usuarioResponsable || ''),
+      usuarioResponsable: m.usuario ? nombreCompleto(m.usuario) : (m.usuarioResponsable || ''),
       sucursalAnterior: m.origenAgencia?.nombre || m.sucursalAnterior || '',
       bahiaAnterior: m.origenBahia?.nombre || m.bahiaAnterior || '',
       sucursalNueva: m.destinoAgencia?.nombre || m.sucursalNueva || '',

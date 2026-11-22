@@ -61,6 +61,11 @@ export class MenuIndicadoresService implements OnDestroy {
   }
 
   private cargarTaller(): void {
+    // Sin permiso de alertas, incidentes ni mantenimientos el servidor respondería 403: ni se pregunta.
+    if (!this.auth.puedeAlguno('alertas.ver', 'incidentes.ver', 'mantenimientos.ver')) {
+      this.taller.set(0);
+      return;
+    }
     this.notificaciones.getPendientes().subscribe((lista) => {
       this.taller.set((lista || []).filter((p) => p.grupo === 'mantenimiento').length);
     });

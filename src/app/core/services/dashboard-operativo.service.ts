@@ -12,6 +12,7 @@ import { CHART_COLORS, CHART_SERIES, coloresCategoricos, coloresGravedad, interp
 import { ToastService } from '../../shared/services/toast.service';
 import { AlertaStockVM } from '../models/alerta-stock.model';
 
+import { nombreCompleto } from '../utils/nombre-persona';
 /**
  * Todo lo que se muestra sale de lo que devuelve el servidor. Cuando el servidor no entrega un dato, el servicio
  * devuelve null o una lista vacía y la pantalla muestra "sin datos"; nunca se rellena con valores inventados.
@@ -266,7 +267,7 @@ export class DashboardOperativoService {
         const total = raw.length;
         const ranking = raw
           .map(op => ({
-            nombre: op.nombre || `${op.name || ''} ${op.lastname || ''}`.trim(),
+            nombre: op.nombre || nombreCompleto(op),
             bahia: op.bahia || op.sucursal || '',
             vehiculos: Number(op.vehiculosAtendidos ?? op.serviciosRealizados ?? 0)
           }))
@@ -415,7 +416,7 @@ export class DashboardOperativoService {
     const nivel = String(a?.nivel || '').toUpperCase();
     const tipo = (nivel === 'CRITICO' || nivel === 'AGOTADO') ? 'critica' : (nivel === 'BAJO' ? 'advertencia' : 'info');
     const fechaObj = a?.createdAt ? new Date(a.createdAt) : null;
-    const pulidor = a?.pulidor ? `${a.pulidor.name ?? ''} ${a.pulidor.lastname ?? ''}`.trim() : null;
+    const pulidor = a?.pulidor ? nombreCompleto(a.pulidor) : null;
     return {
       id: String(a?.id ?? `${nivel}-${a?.insumo?.nombre ?? ''}-${a?.createdAt ?? ''}`),
       tipo,

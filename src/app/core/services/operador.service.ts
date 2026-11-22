@@ -7,6 +7,7 @@ import { apiUrl } from '../config/env';
 import { ConsultaTabla } from '../models/paginacion.model';
 import { PaginaConResumen, cuerpoConsulta, postPagina } from '../utils/tabla-servidor';
 
+import { nombreCompleto } from '../utils/nombre-persona';
 /** Lo que pide la tabla de operadores: la de la tabla más sus filtros. `agenciaId` acepta el id o el nombre de la agencia. */
 export interface ConsultaOperadores extends Partial<ConsultaTabla> {
   agenciaId?: string;
@@ -69,13 +70,13 @@ export class OperadorService {
         return rawItems.map((h: any, index: number) => ({
           id: h.id || index + 1,
           operadorId: h.operadorId,
-          operadorNombre: h.operador ? `${h.operador.name || ''} ${h.operador.lastname || ''}`.trim() : 'Lavador',
+          operadorNombre: h.operador ? nombreCompleto(h.operador) : 'Lavador',
           // Fecha y hora completas (ISO): la pantalla las muestra con día y hora.
           fechaInicio: h.fechaInicio || '',
           fechaFin: h.fechaFin || undefined,
           sucursal: h.bahia?.agencia?.nombre || 'Agencia',
           bahia: h.bahia?.nombre || 'Bahía',
-          realizadoPor: h.asignadoPor ? `${h.asignadoPor.name || ''} ${h.asignadoPor.lastname || ''}`.trim() : 'Supervisor',
+          realizadoPor: h.asignadoPor ? nombreCompleto(h.asignadoPor) : 'Supervisor',
           motivo: h.motivo || 'Asignación técnica',
           motivoFin: h.motivoFin || undefined
         }));
@@ -93,7 +94,7 @@ export class OperadorService {
         return rawItems.map((h: any): HistorialCambioAgencia => ({
           id: String(h.id),
           usuarioId: String(h.usuarioId),
-          usuarioNombre: h.usuario ? `${h.usuario.name || ''} ${(h.usuario.lastname || '').replace(/\(?CI:[^)]*\)?/g, '')}`.trim() : '',
+          usuarioNombre: h.usuario ? nombreCompleto(h.usuario) : '',
           fecha: h.createdAt || '',
           origen: h.agenciaOrigenNombre || 'Sin agencia',
           destino: h.agenciaDestinoNombre || 'Sin agencia',
@@ -114,12 +115,12 @@ export class OperadorService {
         return rawItems.map((h: any, index: number) => ({
           id: h.id || index + 1,
           operadorId: h.operadorId,
-          operadorNombre: h.operador ? `${h.operador.name || ''} ${h.operador.lastname || ''}`.trim() : 'Lavador',
+          operadorNombre: h.operador ? nombreCompleto(h.operador) : 'Lavador',
           fechaInicio: h.fechaInicio || h.createdAt || '',
           fechaFin: h.fechaFin || undefined,
           sucursal: h.bahia?.agencia?.nombre || 'Agencia',
           bahia: h.bahia?.nombre || 'Bahía',
-          realizadoPor: h.asignadoPor ? `${h.asignadoPor.name || ''} ${h.asignadoPor.lastname || ''}`.trim() : 'Supervisor',
+          realizadoPor: h.asignadoPor ? nombreCompleto(h.asignadoPor) : 'Supervisor',
           motivo: h.motivo || 'Asignación técnica'
         }));
       }),

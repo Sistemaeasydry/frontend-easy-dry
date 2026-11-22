@@ -9,6 +9,7 @@ import { ConsultaTabla } from '../models/paginacion.model';
 import { PaginaConResumen, cuerpoConsulta } from '../utils/tabla-servidor';
 import { normalizarPagina } from '../models/paginacion.model';
 
+import { nombreCompleto } from '../utils/nombre-persona';
 /** Sede a la que el servidor acotó el catálogo (solo llega cuando el usuario no es Admin ni Súper Admin y tiene sede). */
 export interface AgenciaCatalogoCtx {
   tieneServiciosEspeciales: boolean;
@@ -287,7 +288,7 @@ export class CatalogoServiciosService {
         unidadSimbolo: h.unidadSimbolo,
         cantidadAnterior: h.cantidadAnterior != null ? Number(h.cantidadAnterior) : null,
         cantidadNueva: h.cantidadNueva != null ? Number(h.cantidadNueva) : null,
-        usuarioNombre: h.usuario ? `${h.usuario.name || ''} ${h.usuario.lastname || ''}`.trim() : '',
+        usuarioNombre: h.usuario ? nombreCompleto(h.usuario) : '',
         fecha: h.createdAt,
       }))),
       catchError(err => {

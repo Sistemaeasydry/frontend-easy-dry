@@ -9,6 +9,7 @@ import { OpcionesService } from './opciones.service';
 import { ConsultaTabla } from '../models/paginacion.model';
 import { PaginaConResumen, cuerpoConsulta, postPagina } from '../utils/tabla-servidor';
 
+import { nombreCompleto } from '../utils/nombre-persona';
 @Injectable({
   providedIn: 'root'
 })
@@ -20,7 +21,7 @@ export class RegionService {
 
   private mapBackendRegion(r: any): RegionOperativa {
     const sup = r.usuarios?.find((u: any) => conFuncion(u, FUNCION.SUPERVISOR)) || r.usuarios?.[0];
-    const respNombre = r.responsable || (sup ? `${sup.name || ''} ${sup.lastname || ''}`.trim() : '');
+    const respNombre = r.responsable || (sup ? nombreCompleto(sup) : '');
     const supId = r.supervisorId || sup?.id || undefined;
     return {
       id: r.id,

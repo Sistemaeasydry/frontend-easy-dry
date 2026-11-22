@@ -24,6 +24,7 @@ import {
 import { EvidenciasFotosComponent } from '../shared/evidencias-fotos.component';
 import { Semaforo5sComponent } from '../shared/semaforo-5s.component';
 
+import { nombreCompleto } from '../../../core/utils/nombre-persona';
 interface Respuesta {
   /** Lo guardado: el puntaje; en SI/NO, 1 = SI y 0 = NO. null = sin evaluar. */
   puntaje: number | null;
@@ -286,7 +287,7 @@ export class Auditoria5sFormComponent implements OnInit, OnDestroy {
   private sub?: Subscription;
 
   readonly nombreS = nombre5s;
-  readonly usuarioNombre = (() => { const u = this.auth.getCurrentUser(); return u ? `${u.nombre} ${u.apellido}`.trim() : ''; })();
+  readonly usuarioNombre = (() => { const u = this.auth.getCurrentUser(); return u ? nombreCompleto(u) : ''; })();
   readonly opcionesSiNo = [{ valor: 1, texto: 'SI' }, { valor: 0, texto: 'NO' }];
 
   cat: Catalogo5s | null = null;

@@ -39,7 +39,7 @@ describe('construirNotaAmbito', () => {
   });
 
   it('un rol oficial regional explica que ve todas las agencias de su región', () => {
-    const n = construirNotaAmbito(entrada({ codigoRol: 'SUPERVISOR', nombreRol: 'Supervisor Regional', ambito: 'REGION' }));
+    const n = construirNotaAmbito(entrada({ codigoRol: 'SUPERVISOR', nombreRol: 'Coordinador Regional', ambito: 'REGION' }));
     expect(n.tono).toBe('fijo');
     expect(n.texto).toContain('«Su región»');
     expect(n.texto).toContain('ve todas las agencias de esa región');
@@ -85,7 +85,7 @@ describe('construirNotaAmbito', () => {
     const oficiales: Array<[string, string, string]> = [
       ['SUPER_ADMIN', 'Súper Administrador', 'GLOBAL'],
       ['ADMIN', 'Administrador', 'GLOBAL'],
-      ['SUPERVISOR', 'Supervisor Regional', 'REGION'],
+      ['SUPERVISOR', 'Coordinador Regional', 'REGION'],
       ['JEFE_COMERCIAL', 'Jefe Comercial', 'GLOBAL'],
       ['COORD_COMERCIAL', 'Coordinador Comercial', 'REGION'],
       ['APROBADOR', 'Aprobador de Agencia', 'AGENCIA'],

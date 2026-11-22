@@ -114,6 +114,7 @@ export class RolService {
       capacidades: Array.isArray(r.capacidades) ? r.capacidades : [],
       paginas: Array.isArray(r.paginas) ? r.paginas : [],
       ambito: r.ambito || 'AGENCIA',
+      categoria: r.categoria === 'ADMINISTRACION' ? 'ADMINISTRACION' : 'OPERADOR',
       estado,
       esSistema: !!r.esSistema,
       fechaCreacion,
@@ -212,6 +213,7 @@ export class RolService {
     descripcion: string;
     capacidades: string[];
     ambito: string;
+    categoria?: string;
     estado?: number;
   }): Observable<RolPersonalizado> {
     const payload = {
@@ -220,6 +222,7 @@ export class RolService {
       estado: data.estado !== undefined ? data.estado : 1,
       capacidades: data.capacidades || [],
       ambito: data.ambito,
+      ...(data.categoria ? { categoria: data.categoria } : {}),
     };
 
     return this.http.post<any>(apiUrl('/roles/create'), payload, SILENCIOSO).pipe(
@@ -242,12 +245,14 @@ export class RolService {
     descripcion?: string;
     capacidades?: string[];
     ambito?: string;
+    categoria?: string;
     estado?: number | string;
   }): Observable<RolPersonalizado> {
     const payload: any = { id };
     if (cambios.descripcion !== undefined) payload.descripcion = cambios.descripcion.trim();
     if (cambios.capacidades !== undefined) payload.capacidades = cambios.capacidades;
     if (cambios.ambito !== undefined) payload.ambito = cambios.ambito;
+    if (cambios.categoria !== undefined) payload.categoria = cambios.categoria;
     if (cambios.estado !== undefined) {
       payload.estado = cambios.estado === 'Activo' || cambios.estado === 1 ? 1 : 0;
     }

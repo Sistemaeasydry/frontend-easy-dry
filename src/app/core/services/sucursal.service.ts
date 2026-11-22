@@ -31,6 +31,7 @@ import { RegionService } from './region.service';
 import { MarcaSucursalService } from './marca-sucursal.service';
 import { apiUrl } from '../config/env';
 
+import { nombreCompleto } from '../utils/nombre-persona';
 @Injectable({
   providedIn: 'root'
 })
@@ -60,12 +61,12 @@ export class SucursalService {
     });
 
     const responsable = ger
-      ? `${ger.name || ''} ${ger.lastname || ''}`.trim()
+      ? nombreCompleto(ger)
       : (a.responsable && a.responsable !== 'Sin Asignar' ? a.responsable : 'Sin Asignar');
 
     const gerenteId = ger?.id || a.gerenteId || undefined;
     const gerenteNombre = ger
-      ? `${ger.name || ''} ${ger.lastname || ''}`.trim()
+      ? nombreCompleto(ger)
       : (a.gerenteNombre || (responsable !== 'Sin Asignar' ? responsable : undefined));
 
     const lider = (a.usuarios || []).find((u: any) => String(u.id) === String(a.liderOperadorId))
@@ -74,7 +75,7 @@ export class SucursalService {
       });
 
     const liderOperador = lider
-      ? `${lider.name || ''} ${lider.lastname || ''}`.trim()
+      ? nombreCompleto(lider)
       : (a.liderOperador && a.liderOperador !== 'Sin Asignar' ? a.liderOperador : 'Sin Asignar');
 
     const tieneServiciosEspeciales = Boolean(a.tieneServiciosEspeciales);
@@ -122,7 +123,20 @@ export class SucursalService {
       requiereAprobacion: !!gerenteId,
       gerenteId,
       gerenteNombre,
-      tieneServiciosEspeciales
+      tieneServiciosEspeciales,
+      email: a.email || '',
+      tipoUbicacion: a.tipoUbicacion || 'OPERATIVA',
+      latitud: a.latitud ?? null,
+      longitud: a.longitud ?? null,
+      radioTimbradaM: a.radioTimbradaM ?? undefined,
+      creadaEl: a.createdAt || undefined,
+      personal: (a.usuarios || []).map((u: any) => ({
+        id: String(u.id),
+        nombre: nombreCompleto(u),
+        rol: u.role?.namerol || '',
+        activo: u.estado === 1 || u.estado === 'Activo',
+        esLavador: conFuncion(u, FUNCION.LAVADOR),
+      })),
     };
   }
 

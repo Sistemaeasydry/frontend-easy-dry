@@ -24,6 +24,7 @@ import { MenuIndicadoresService } from '../../core/services/menu-indicadores.ser
 import { EvidenciasEnvioComponent } from './evidencias-envio.component';
 import { VisorEvidenciasComponent } from './visor-evidencias.component';
 
+import { nombreCompleto } from '../../core/utils/nombre-persona';
 @Component({
   selector: 'app-envios',
   standalone: true,
@@ -946,7 +947,7 @@ export class EnviosComponent implements OnInit, OnDestroy {
           : (p.regionNombre || p.region?.nombre || 'zona');
         return {
           id: String(p.id),
-          nombre: `${p.name || p.nombre || ''} ${p.lastname || p.apellido || ''}`.trim() || p.email || p.id,
+          nombre: nombreCompleto(p) || p.email || p.id,
           // Se muestra junto al nombre en el <option> para no confundir "despachar a la agencia"
           // (stock general) con "despachar al kit personal del pulidor fijo de esa agencia": son
           // destinos distintos y solo el pulidor destinatario puede confirmar el segundo.
@@ -1084,10 +1085,10 @@ export class EnviosComponent implements OnInit, OnDestroy {
 
   private mapBackendDespacho(m: any): EnvioSuministro {
     const userDesp = m.usuarioDespacha
-      ? `${m.usuarioDespacha.name || ''} ${m.usuarioDespacha.lastname || ''}`.trim()
+      ? nombreCompleto(m.usuarioDespacha)
       : 'Distribuidor Central (Bodega)';
     const userRec = m.usuarioRecibe
-      ? `${m.usuarioRecibe.name || ''} ${m.usuarioRecibe.lastname || ''}`.trim()
+      ? nombreCompleto(m.usuarioRecibe)
       : undefined;
     const fechaEnv = m.fechaDespacho
       ? m.fechaDespacho.split('T')[0]

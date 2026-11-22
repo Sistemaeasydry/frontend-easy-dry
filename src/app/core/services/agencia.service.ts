@@ -5,6 +5,7 @@ import { map, tap, catchError } from 'rxjs/operators';
 import { Agencia } from '../models';
 import { apiUrl } from '../config/env';
 
+import { nombreCompleto } from '../utils/nombre-persona';
 @Injectable({
   providedIn: 'root'
 })
@@ -23,7 +24,7 @@ export class AgenciaService {
       productividad: Number(a.productividad ?? a.porcentajeProductividad ?? a.metricas?.productividad ?? 0),
       estado: a.estado === 1 ? 'Operativa' : 'Inactiva',
       direccion: a.direccion || '',
-      gerenteAsignado: a.usuarios?.[0] ? `${a.usuarios[0].name} ${a.usuarios[0].lastname}`.trim() : 'Sin Asignar',
+      gerenteAsignado: a.usuarios?.[0] ? nombreCompleto(a.usuarios[0]) : 'Sin Asignar',
       clienteId: a.clienteId || a.cliente?.id || a.marcaId || a.marca?.id,
       clienteNombre: a.cliente?.nombre || a.marca?.nombre || 'Sin cliente',
       marcaId: a.clienteId || a.cliente?.id || a.marcaId || a.marca?.id,
