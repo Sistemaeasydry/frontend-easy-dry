@@ -46,7 +46,10 @@ export interface RespuestaMantenimientosPagina {
 /** Programación de un mantenimiento (POST /maquinaria/mantenimientos/registrar). */
 export interface ProgramarMantenimientoPayload {
   maquinariaId: string;
+  /** Asistente (técnico): opcional al programar. */
   tecnicoId?: string;
+  /** Coordinador de mantenimiento: opcional al programar. */
+  coordinadorId?: string;
   observaciones: string;
   /** YYYY-MM-DD */
   fechaProgramada?: string;
@@ -83,6 +86,7 @@ export class MantenimientoService {
       id: m.id,
       maquinariaId: m.maquinariaId || m.maquinaria?.id,
       frecuenciaDias: Number(m.frecuenciaDias || 0),
+      ventanaAdelantoDias: Number(m.maquinaria?.ventanaAdelantoDias ?? 0),
       proximoMantenimiento: proximo,
       maquina: maquinaNombre,
       fecha: fechaStr,
@@ -92,6 +96,10 @@ export class MantenimientoService {
       agencia: m.maquinaria?.agencia?.nombre || 'Taller Central',
       tecnicoAsignadoId: m.tecnicoId || m.tecnico?.id || m.tecnicoAsignadoId,
       tecnicoAsignadoNombre: tecnicoNombre,
+      fechaEnCamino: m.fechaEnCamino || null,
+      fechaAtendiendo: m.fechaAtendiendo || null,
+      coordinadorId: m.coordinadorId || m.coordinador?.id || undefined,
+      coordinadorNombre: m.coordinador ? nombrePersona(m.coordinador) : undefined,
       observacionCierre: m.observaciones,
       repuestosUtilizados: Array.isArray(m.repuestosUsados) ? m.repuestosUsados.map((r: any) => typeof r === 'string' ? r : (r?.nombre || JSON.stringify(r))) : undefined,
       costoTotal: m.costoTotal != null ? Number(m.costoTotal) : undefined,
@@ -164,11 +172,24 @@ export class MantenimientoService {
     );
   }
 
-  /** Asigna el mantenimiento. Sin tecnicoId se auto-asigna el coordinador. */
-  asignarMantenimiento(mantenimientoId: string | number, tecnicoId?: string | number): Observable<Mantenimiento> {
+  /** El asistente asignado marca el mantenimiento «en camino» (avisa a su coordinador y a quien lo programó). */
+  marcarEnCamino(mantenimientoId: string | number): Observable<Mantenimiento> {
+    return this.http.post<any>(apiUrl('/maquinaria/mantenimientos/en-camino'), { mantenimientoId: String(mantenimientoId) })
+      .pipe(map(res => this.mapBackendMantenimiento(res?.data || res)));
+  }
+
+  /** El asistente asignado marca el mantenimiento «atendiendo». */
+  marcarAtendiendo(mantenimientoId: string | number): Observable<Mantenimiento> {
+    return this.http.post<any>(apiUrl('/maquinaria/mantenimientos/atendiendo'), { mantenimientoId: String(mantenimientoId) })
+      .pipe(map(res => this.mapBackendMantenimiento(res?.data || res)));
+  }
+
+  /** Asigna el mantenimiento: el coordinador y el asistente son obligatorios. */
+  asignarMantenimiento(mantenimientoId: string | number, tecnicoId: string | number, coordinadorId: string | number): Observable<Mantenimiento> {
     return this.http.post<any>(apiUrl('/maquinaria/mantenimientos/asignar'), {
       mantenimientoId: String(mantenimientoId),
-      tecnicoId: tecnicoId != null && tecnicoId !== '' ? String(tecnicoId) : undefined,
+      tecnicoId: String(tecnicoId),
+      coordinadorId: String(coordinadorId),
     }).pipe(map(res => this.mapBackendMantenimiento(res?.data || res)));
   }
 

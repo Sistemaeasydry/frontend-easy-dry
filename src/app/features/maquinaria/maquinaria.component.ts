@@ -43,7 +43,7 @@ import { fechaProgramadaLocal, fechaProgramadaISO } from '../../core/utils/evide
 
       <!-- Global Filter Bar -->
       <app-filter-bar
-        [showSucursal]="canTransfer"
+        [showSucursal]="true"
         [showOperador]="false"
         [showBahia]="true"
         [showRegion]="true"

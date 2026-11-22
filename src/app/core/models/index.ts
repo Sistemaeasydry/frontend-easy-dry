@@ -25,6 +25,10 @@ export interface Usuario {
   email: string;
   /** Celular de 10 dígitos (09XXXXXXXX). */
   telefono?: string;
+  /** Cédula (10 dígitos, única). Solo la ven quienes tienen el permiso «Ver cédula del personal». */
+  cedula?: string;
+  /** Ciudad de la persona (texto libre). */
+  ciudad?: string;
   avatar?: string;
   sucursalAsignada?: string;
   bahiaAsignada?: string;
@@ -81,6 +85,17 @@ export interface Sucursal {
   gerenteNombre?: string;
   /** Si la sucursal ofrece servicios especiales (pulido, cerámico, motor, etc.). */
   tieneServiciosEspeciales?: boolean;
+  email?: string;
+  /** OPERATIVA | TALLER_NACIONAL | TALLER_REGIONAL */
+  tipoUbicacion?: string;
+  latitud?: number | null;
+  longitud?: number | null;
+  /** Distancia máxima (m) a la que se acepta una timbrada del personal. */
+  radioTimbradaM?: number;
+  /** Fecha de creación (ISO) */
+  creadaEl?: string;
+  /** Todo el personal asignado a la agencia, con su rol y si está activo. */
+  personal?: Array<{ id: string; nombre: string; rol: string; activo: boolean; esLavador: boolean }>;
 }
 
 
@@ -330,6 +345,8 @@ export interface Maquinaria {
 
 export interface Mantenimiento {
   id: string | number;
+  /** Días antes de la fecha programada desde los que se puede ejecutar (configurado en la máquina). */
+  ventanaAdelantoDias?: number;
   maquina: string;
   fecha: string;
   fechaInicio?: string;
@@ -348,6 +365,12 @@ export interface Mantenimiento {
   archivos?: ArchivoAdjunto[];
   tecnicoAsignadoId?: string | number;
   tecnicoAsignadoNombre?: string;
+  /** Coordinador de mantenimiento responsable (opcional al programar, obligatorio al asignar). */
+  coordinadorId?: string | number;
+  coordinadorNombre?: string;
+  /** Avance del asistente asignado: En camino y Atendiendo (fecha y hora). */
+  fechaEnCamino?: string | null;
+  fechaAtendiendo?: string | null;
   gestorAsignadorId?: string | number;
   gestorAsignadorNombre?: string;
   fechaAsignacion?: string;
@@ -468,6 +491,9 @@ export interface Incidente {
   gestorAsignadorId?: string | number;
   gestorAsignadorNombre?: string;
   fechaAsignacion?: string;
+  /** Avance del técnico asignado: En camino y Atendiendo (fecha y hora). */
+  fechaEnCamino?: string | null;
+  fechaAtendiendo?: string | null;
 
   // Evidencias del Fallo (Fotos y Videos al reportar)
   fotosFallo?: string[];
@@ -512,6 +538,8 @@ import { RecetaInsumoServicio } from './inventario.model';
 export interface ServicioExtra {
   id: number | string;
   codigoSE: string;                      // Ej: SE-2026-001
+  /** Ticket opcional (letras o números, hasta 10). Null = el servicio no es por ticket. */
+  ticket?: string | null;
   servicioNombre: string;                // Nombre del servicio extra
   servicioDescripcion?: string;
   operadorId: number | string;

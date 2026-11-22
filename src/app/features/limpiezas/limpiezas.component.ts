@@ -14,9 +14,10 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
 import { ThumbSrcDirective } from '../../shared/directives/thumb-src.directive';
 import { VisorMediaService } from '../../shared/services/visor-media.service';
 import { fechaLocal } from '../../core/utils/evidencia-maquinaria';
-import { puedeEditarLimpiezas, puedeExportarLimpiezas } from '../../core/utils/maquinaria-permisos';
+import { puedeAprobarLimpiezas, puedeEditarLimpiezas, puedeEliminarLimpiezas, puedeExportarLimpiezas } from '../../core/utils/maquinaria-permisos';
 import { PAGE_SIZE_INFINITO } from '../../core/config/paginacion';
 
+import { nombreCompleto } from '../../core/utils/nombre-persona';
 /**
  * Auditoría de limpiezas de maquinaria: 2x/semana (miércoles y sábado) para la de agencia, diaria
  * para la asignada a un pulidor. Visible solo con `limpiezas.ver` (admin/super admin: todo el país;
@@ -109,8 +110,17 @@ import { PAGE_SIZE_INFINITO } from '../../core/config/paginacion';
             <h3 class="font-bold text-base font-outfit leading-snug text-slate-900 truncate">{{ r.maquinaria?.nombre }}</h3>
             <p class="text-xs text-slate-500 mt-0.5">{{ fecha(r.fecha) }}</p>
             <p class="text-xs text-slate-500">
-              Registró: <strong class="text-slate-700">{{ (r.registradoPor?.name || '') + ' ' + (r.registradoPor?.lastname || '') }}</strong>
+              Registró: <strong class="text-slate-700">{{ nombreCompleto(r.registradoPor) }}</strong>
             </p>
+            <div class="mt-2">
+              <span class="px-2 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide"
+                [ngClass]="r.estadoRevision === 'RECHAZADA' ? 'bg-rose-100 text-rose-700' : (r.estadoRevision === 'PENDIENTE' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700')">
+                {{ r.estadoRevision === 'RECHAZADA' ? 'No aprobada' : (r.estadoRevision === 'PENDIENTE' ? 'Por revisar' : 'Aprobada') }}
+              </span>
+            </div>
+            @if (r.estadoRevision === 'RECHAZADA' && r.motivoRechazo) {
+              <p class="text-xs text-rose-700 font-semibold mt-1.5">Motivo: {{ r.motivoRechazo }}</p>
+            }
             @if (r.observaciones) {
               <p class="text-xs text-slate-700 font-medium mt-2 line-clamp-2">{{ r.observaciones }}</p>
             }
@@ -127,14 +137,32 @@ import { PAGE_SIZE_INFINITO } from '../../core/config/paginacion';
             } @else {
               <p class="text-xs text-slate-400 mt-3 italic">Sin fotos.</p>
             }
-            @if (puedeEditar) {
+            @if (puedeAprobar) {
               <div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
-                <button type="button" (click)="abrirEditar(r)" class="btn btn-secondary btn-sm flex-1">
-                  <i-lucide name="pencil" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Editar
-                </button>
-                <button type="button" (click)="eliminar(r)" class="btn btn-danger btn-sm flex-1">
-                  <i-lucide name="trash-2" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Eliminar
-                </button>
+                @if (r.estadoRevision !== 'APROBADA') {
+                  <button type="button" (click)="aprobar(r)" class="btn btn-primary btn-sm flex-1">
+                    <i-lucide name="check-circle-2" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Aprobar
+                  </button>
+                }
+                @if (r.estadoRevision !== 'RECHAZADA') {
+                  <button type="button" (click)="abrirRechazo(r)" class="btn btn-danger btn-sm flex-1">
+                    <i-lucide name="x-circle" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Rechazar
+                  </button>
+                }
+              </div>
+            }
+            @if (puedeEditar || puedeEliminar) {
+              <div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
+                @if (puedeEditar) {
+                  <button type="button" (click)="abrirEditar(r)" class="btn btn-secondary btn-sm flex-1">
+                    <i-lucide name="pencil" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Editar
+                  </button>
+                }
+                @if (puedeEliminar) {
+                  <button type="button" (click)="eliminar(r)" class="btn btn-danger btn-sm flex-1">
+                    <i-lucide name="trash-2" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Eliminar
+                  </button>
+                }
               </div>
             }
           </div>
@@ -153,6 +181,26 @@ import { PAGE_SIZE_INFINITO } from '../../core/config/paginacion';
           (reintentar)="lista.reintentar()">
         </app-infinite-scroll>
       }
+
+      <app-modal [isOpen]="!!rechazando" title="Rechazar limpieza" icon="x-circle" size="sm" (close)="cerrarRechazo()">
+        @if (rechazando) {
+          <div class="space-y-3">
+            <p class="text-xs text-slate-600">
+              La limpieza de <strong>{{ rechazando.maquinaria?.codigo }}</strong> del {{ fecha(rechazando.fecha) }} no se aprobará.
+              Quien la registró recibirá una alerta y una notificación con el motivo.
+            </p>
+            <label for="limpieza-rechazo-motivo" class="field-label">Motivo *</label>
+            <textarea id="limpieza-rechazo-motivo" [(ngModel)]="motivoRechazo" name="motivo-rechazo" rows="3" maxlength="500" class="field" placeholder="Ej. La máquina sigue sucia en la parte inferior."></textarea>
+            @if (rechazoError) { <div class="estado-error" role="alert">{{ rechazoError }}</div> }
+          </div>
+          <div class="flex gap-2 mt-4">
+            <button type="button" (click)="cerrarRechazo()" class="btn btn-secondary w-full sm:w-auto">Cancelar</button>
+            <button type="button" (click)="confirmarRechazo()" [disabled]="guardandoRechazo" class="btn btn-danger w-full sm:w-auto">
+              {{ guardandoRechazo ? 'Rechazando...' : 'Rechazar limpieza' }}
+            </button>
+          </div>
+        }
+      </app-modal>
 
       <app-modal [isOpen]="!!editando" title="Editar observaciones" icon="pencil" size="sm" (close)="cerrarEditar()">
         @if (editando) {
@@ -173,6 +221,7 @@ import { PAGE_SIZE_INFINITO } from '../../core/config/paginacion';
   `,
 })
 export class LimpiezasComponent implements OnInit, OnDestroy {
+  readonly nombreCompleto = nombreCompleto;
   @Input() hideHeader = false;
 
   private maquinariaService = inject(MaquinariaService);
@@ -192,6 +241,10 @@ export class LimpiezasComponent implements OnInit, OnDestroy {
   fechaHasta = '';
 
   readonly puedeEditar = puedeEditarLimpiezas(this.authService);
+  /** Aprobar o rechazar: el coordinador de mantenimiento (o el rol al que se le active el permiso). */
+  readonly puedeAprobar = puedeAprobarLimpiezas(this.authService);
+  /** Eliminar un registro: solo administradores. */
+  readonly puedeEliminar = puedeEliminarLimpiezas(this.authService);
   readonly puedeVerFotos = this.authService.puede('taller.limpiezas.fotos');
   /** Las exportaciones viven en Reportes Operativos: solo exporta quien tiene ese permiso. */
   readonly puedeExportar = puedeExportarLimpiezas(this.authService);
@@ -201,6 +254,11 @@ export class LimpiezasComponent implements OnInit, OnDestroy {
     PAGE_SIZE_INFINITO,
     (r) => r.id,
   );
+
+  rechazando: LimpiezaMaquinaria | null = null;
+  motivoRechazo = '';
+  rechazoError = '';
+  guardandoRechazo = false;
 
   editando: LimpiezaMaquinaria | null = null;
   editarObservaciones = '';
@@ -265,6 +323,46 @@ export class LimpiezasComponent implements OnInit, OnDestroy {
     this.lista.reiniciar();
   }
 
+  async aprobar(r: LimpiezaMaquinaria): Promise<void> {
+    try {
+      await firstValueFrom(this.maquinariaService.decidirLimpieza(r.id, true));
+      this.lista.reiniciar();
+      this.toastService.success('Limpieza aprobada', `${r.maquinaria?.codigo || 'La máquina'} · ${this.fecha(r.fecha)}`);
+    } catch (err) {
+      this.toastService.error('No se pudo aprobar', this.mensajeError(err));
+    }
+  }
+
+  abrirRechazo(r: LimpiezaMaquinaria): void {
+    this.rechazando = r;
+    this.motivoRechazo = '';
+    this.rechazoError = '';
+  }
+
+  cerrarRechazo(): void {
+    this.rechazando = null;
+  }
+
+  async confirmarRechazo(): Promise<void> {
+    if (!this.rechazando) return;
+    if (!this.motivoRechazo.trim()) {
+      this.rechazoError = 'Escribe el motivo por el que no se aprueba la limpieza.';
+      return;
+    }
+    this.guardandoRechazo = true;
+    this.rechazoError = '';
+    try {
+      await firstValueFrom(this.maquinariaService.decidirLimpieza(this.rechazando.id, false, this.motivoRechazo));
+      this.lista.reiniciar();
+      this.toastService.warning('Limpieza no aprobada', 'Se avisó a quien la registró, con el motivo.');
+      this.rechazando = null;
+    } catch (err) {
+      this.rechazoError = this.mensajeError(err);
+    } finally {
+      this.guardandoRechazo = false;
+    }
+  }
+
   abrirEditar(r: LimpiezaMaquinaria): void {
     this.editando = r;
     this.editarObservaciones = r.observaciones || '';
@@ -307,13 +405,15 @@ export class LimpiezasComponent implements OnInit, OnDestroy {
     this.exportando = true;
     try {
       const filas = await firstValueFrom(this.maquinariaService.exportarLimpiezas(this.filtroMaquinariaId || undefined, this.fechaDesde || undefined, this.fechaHasta || undefined));
-      const encabezado = ['Máquina', 'Código', 'Tipo', 'Fecha', 'Registró', 'Observaciones', 'Fotos'];
+      const encabezado = ['Máquina', 'Código', 'Tipo', 'Fecha', 'Registró', 'Revisión', 'Motivo del rechazo', 'Observaciones', 'Fotos'];
       const lineas = filas.map((r) => [
         r.maquinaria?.nombre || '',
         r.maquinaria?.codigo || '',
         r.tipo === 'AGENCIA' ? 'Agencia' : 'Pulidor',
         this.fecha(r.fecha),
-        `${r.registradoPor?.name || ''} ${r.registradoPor?.lastname || ''}`.trim(),
+        nombreCompleto(r.registradoPor),
+        r.estadoRevision === 'RECHAZADA' ? 'No aprobada' : (r.estadoRevision === 'PENDIENTE' ? 'Por revisar' : 'Aprobada'),
+        r.motivoRechazo || '',
         r.observaciones || '',
         String(r.fotos.length),
       ].map(celdaCsv).join(','));

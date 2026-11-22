@@ -17,6 +17,7 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
 import { EvidenciaGaleriaComponent } from '../../shared/components/evidencia-galeria/evidencia-galeria.component';
 import { resolverRangoFechas } from '../../core/utils/fecha-rango';
 import { SucursalService } from '../../core/services/sucursal.service';
+import { CLASE_AVANCE, ETIQUETA_AVANCE, EtapaAvance, etapaAvance } from '../../core/utils/avance-atencion';
 import { fechaHoraLocal, fechaProgramadaLocal } from '../../core/utils/evidencia-maquinaria';
 import { puedeGestionarMaquina, puedeEjecutarMantenimientos, puedeEditarMantenimientos, puedeVerMaquinaria, puedeProgramarMantenimiento } from '../../core/utils/maquinaria-permisos';
 import { TrabajoAccionesComponent } from '../maquinaria/trabajo-acciones/trabajo-acciones.component';
@@ -130,6 +131,12 @@ import { badgeClase, BADGE_NO_ATENDIDO } from '../../core/utils/badges';
                   <span class="block mt-1 w-fit font-sans" [class]="badgeNoAtendido">No atendido</span>
                 }
                 <span class="block text-xs text-slate-500 font-sans font-semibold">{{ etiquetaFrecuencia(m.frecuenciaDias) }}</span>
+                @if (m.estadoRaw !== 'FINALIZADO') {
+                  <span class="block text-xs font-sans font-semibold" [ngClass]="dentroDeVentana(m) ? 'text-emerald-700' : 'text-amber-700'"
+                    title="Ventana de adelanto: cuántos días antes de la fecha programada se puede registrar">
+                    Ventana: {{ m.ventanaAdelantoDias || 0 }} día(s) · {{ dentroDeVentana(m) ? 'ya se puede ejecutar' : 'desde ' + ejecutableDesde(m) }}
+                  </span>
+                }
               </div>
             </ng-template>
 
@@ -139,10 +146,14 @@ import { badgeClase, BADGE_NO_ATENDIDO } from '../../core/utils/badges';
 
             <ng-template appCell="tecnico" let-m>
               @if (m.tecnicoAsignadoNombre) { <span class="text-xs text-slate-700 font-medium">{{ m.tecnicoAsignadoNombre }}</span> } @else { <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-700 ring-1 ring-rose-200">Sin técnico asignado</span> }
+              @if (m.coordinadorNombre) { <span class="block text-xs text-slate-500">Coord.: {{ m.coordinadorNombre }}</span> }
             </ng-template>
 
             <ng-template appCell="estado" let-m>
               <span [class]="badgeClase('mantenimiento', m.estado)">{{ m.estado }}</span>
+              @if (m.estadoRaw !== 'FINALIZADO' && etapa(m) !== 'SIN_ASIGNAR') {
+                <span class="block mt-1 w-fit px-2 py-0.5 rounded-full text-[11px] font-extrabold" [ngClass]="claseEtapa[etapa(m)]">{{ etiquetaEtapa[etapa(m)] }}</span>
+              }
             </ng-template>
 
             <ng-template appCell="ejecucion" let-m>
@@ -167,9 +178,23 @@ import { badgeClase, BADGE_NO_ATENDIDO } from '../../core/utils/badges';
                     <i-lucide name="user-plus" class="w-4 h-4" aria-hidden="true"></i-lucide>
                   </button>
                 }
+                @if (puedeAvanzar(m) && etapa(m) === 'ASIGNADO') {
+                  <button type="button" (click)="acciones.marcarAvance('MANTENIMIENTO', m.id, 'EN_CAMINO')" title="Estoy en camino" aria-label="Estoy en camino"
+                    class="btn-icon border border-slate-200 bg-white">
+                    <i-lucide name="truck" class="w-4 h-4" aria-hidden="true"></i-lucide>
+                  </button>
+                }
+                @if (puedeAvanzar(m) && (etapa(m) === 'ASIGNADO' || etapa(m) === 'EN_CAMINO')) {
+                  <button type="button" (click)="acciones.marcarAvance('MANTENIMIENTO', m.id, 'ATENDIENDO')" title="Ya lo estoy atendiendo" aria-label="Ya lo estoy atendiendo"
+                    class="btn-icon border border-slate-200 bg-white">
+                    <i-lucide name="wrench" class="w-4 h-4" aria-hidden="true"></i-lucide>
+                  </button>
+                }
                 @if (puedeEjecutar(m)) {
-                  <button type="button" (click)="acciones.ejecutarMantenimiento(m)" title="Ejecutar mantenimiento" aria-label="Ejecutar mantenimiento"
-                    class="btn-icon bg-easydry-blue text-white hover:bg-easydry-blue-dark hover:text-white">
+                  <button type="button" (click)="ejecutar(m)" [disabled]="!dentroDeVentana(m)"
+                    [title]="dentroDeVentana(m) ? 'Ejecutar mantenimiento' : 'Aún no se puede ejecutar: desde ' + ejecutableDesde(m)"
+                    [attr.aria-label]="dentroDeVentana(m) ? 'Ejecutar mantenimiento' : 'Ejecutar mantenimiento (aún fuera de la ventana de adelanto)'"
+                    class="btn-icon bg-easydry-blue text-white hover:bg-easydry-blue-dark hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-easydry-blue">
                     <i-lucide name="check-circle-2" class="w-4 h-4" aria-hidden="true"></i-lucide>
                   </button>
                 }
@@ -208,8 +233,16 @@ import { badgeClase, BADGE_NO_ATENDIDO } from '../../core/utils/badges';
                   @if (puedeAsignar(m)) {
                     <button type="button" (click)="acciones.asignarMantenimiento(m)" class="btn btn-secondary btn-sm">{{ m.tecnicoAsignadoId ? 'Reasignar' : 'Asignar' }}</button>
                   }
+                  @if (puedeAvanzar(m) && etapa(m) === 'ASIGNADO') {
+                    <button type="button" (click)="acciones.marcarAvance('MANTENIMIENTO', m.id, 'EN_CAMINO')" class="btn btn-secondary btn-sm">En camino</button>
+                  }
+                  @if (puedeAvanzar(m) && (etapa(m) === 'ASIGNADO' || etapa(m) === 'EN_CAMINO')) {
+                    <button type="button" (click)="acciones.marcarAvance('MANTENIMIENTO', m.id, 'ATENDIENDO')" class="btn btn-secondary btn-sm">Atendiendo</button>
+                  }
                   @if (puedeEjecutar(m)) {
-                    <button type="button" (click)="acciones.ejecutarMantenimiento(m)" class="btn btn-primary btn-sm">Ejecutar</button>
+                    <button type="button" (click)="ejecutar(m)" [disabled]="!dentroDeVentana(m)"
+                      [title]="dentroDeVentana(m) ? 'Ejecutar mantenimiento' : 'Aún no se puede ejecutar: desde ' + ejecutableDesde(m)"
+                      class="btn btn-primary btn-sm disabled:opacity-40 disabled:cursor-not-allowed">Ejecutar</button>
                   }
                   @if (puedeEditar(m)) {
                     <button type="button" (click)="acciones.editarMantenimiento(m)" class="btn btn-secondary btn-sm">Editar</button>
@@ -268,9 +301,12 @@ import { badgeClase, BADGE_NO_ATENDIDO } from '../../core/utils/badges';
 
             <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 text-xs p-4 rounded-2xl border border-easydry-blue/20 bg-easydry-blue/5">
               <div><span class="block text-[11px] text-slate-500 font-bold uppercase mb-0.5">Fecha programada</span><span class="font-mono font-bold text-slate-800">{{ fechaProg(m.fechaProgramada) }}</span></div>
+              <div><span class="block text-[11px] text-slate-500 font-bold uppercase mb-0.5">En camino</span><span class="font-mono text-slate-800">{{ m.fechaEnCamino ? hora(m.fechaEnCamino) : '—' }}</span></div>
+              <div><span class="block text-[11px] text-slate-500 font-bold uppercase mb-0.5">Atendiendo</span><span class="font-mono text-slate-800">{{ m.fechaAtendiendo ? hora(m.fechaAtendiendo) : '—' }}</span></div>
               <div><span class="block text-[11px] text-slate-500 font-bold uppercase mb-0.5">Ejecutado (fecha y hora)</span><span class="font-mono text-slate-800">{{ m.fechaEjecucion ? hora(m.fechaEjecucion) : '—' }}</span></div>
               <div><span class="block text-[11px] text-slate-500 font-bold uppercase mb-0.5">Frecuencia</span><span class="font-bold text-slate-800">{{ etiquetaFrecuencia(m.frecuenciaDias) }}</span></div>
-              <div><span class="block text-[11px] text-slate-500 font-bold uppercase mb-0.5">Técnico</span>@if (m.tecnicoAsignadoNombre) { <span class="font-bold text-slate-800">{{ m.tecnicoAsignadoNombre }}</span> } @else { <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-700 ring-1 ring-rose-200">Sin técnico asignado</span> }</div>
+              <div><span class="block text-[11px] text-slate-500 font-bold uppercase mb-0.5">Coordinador</span>@if (m.coordinadorNombre) { <span class="font-bold text-slate-800">{{ m.coordinadorNombre }}</span> } @else { <span class="text-slate-500">Sin coordinador</span> }</div>
+              <div><span class="block text-[11px] text-slate-500 font-bold uppercase mb-0.5">Asistente</span>@if (m.tecnicoAsignadoNombre) { <span class="font-bold text-slate-800">{{ m.tecnicoAsignadoNombre }}</span> } @else { <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-700 ring-1 ring-rose-200">Sin técnico asignado</span> }</div>
               <div><span class="block text-[11px] text-slate-500 font-bold uppercase mb-0.5">Creado por</span><span class="font-bold text-slate-800">{{ m.creadoPorNombre || '—' }}</span></div>
               <div><span class="block text-[11px] text-slate-500 font-bold uppercase mb-0.5">Ejecutado por</span><span class="font-bold text-slate-800">{{ m.ejecutadoPorNombre || '—' }}</span></div>
               @if (m.costoTotal != null) {
@@ -294,7 +330,9 @@ import { badgeClase, BADGE_NO_ATENDIDO } from '../../core/utils/badges';
         }
         <div modal-footer>
           @if (detalle && puedeEjecutar(detalle)) {
-            <button type="button" (click)="ejecutarDesdeDetalle()" class="btn btn-primary w-full sm:w-auto">
+            <button type="button" (click)="ejecutarDesdeDetalle()" [disabled]="!dentroDeVentana(detalle)"
+              [title]="dentroDeVentana(detalle) ? '' : 'Aún no se puede ejecutar: desde ' + ejecutableDesde(detalle)"
+              class="btn btn-primary w-full sm:w-auto disabled:opacity-40 disabled:cursor-not-allowed">
               <i-lucide name="check-circle-2" class="w-4 h-4" aria-hidden="true"></i-lucide> Ejecutar mantenimiento
             </button>
           }
@@ -509,7 +547,7 @@ export class MantenimientoComponent implements OnInit, OnDestroy {
 
   /** Si la ficha abierta está en lo recién cargado, se actualiza con los datos nuevos. */
   private sincronizarDetalle(items: Mantenimiento[]): void {
-    if (!this.detalle) return;
+    if (!this.detalle || !this.dentroDeVentana(this.detalle)) return;
     this.detalle = items.find(x => x.id === this.detalle!.id) || this.detalle;
   }
 
@@ -600,6 +638,47 @@ export class MantenimientoComponent implements OnInit, OnDestroy {
   puedeEjecutar(m: Mantenimiento): boolean {
     return m.estadoRaw !== 'FINALIZADO' && puedeEjecutarMantenimientos(this.authService) && String(m.tecnicoAsignadoId || '') === this.miId;
   }
+  readonly etiquetaEtapa = ETIQUETA_AVANCE;
+  readonly claseEtapa = CLASE_AVANCE;
+  etapa(m: Mantenimiento): EtapaAvance { return etapaAvance(m); }
+
+  /** Solo el asistente asignado marca «en camino» y «atendiendo» (el servidor también lo exige). */
+  puedeAvanzar(m: Mantenimiento): boolean {
+    return m.estadoRaw !== 'FINALIZADO' && puedeEjecutarMantenimientos(this.authService) && String(m.tecnicoAsignadoId || '') === this.miId;
+  }
+
+  /** Primer día (YYYY-MM-DD) desde el que se puede ejecutar: la fecha programada menos la ventana de adelanto de la máquina. */
+  private desdeISO(m: Mantenimiento): string {
+    const base = String(m.fecha || '').slice(0, 10);
+    const d = new Date(`${base}T00:00:00`);
+    if (!base || isNaN(d.getTime())) return '';
+    d.setDate(d.getDate() - Math.max(0, Number(m.ventanaAdelantoDias || 0)));
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+  }
+
+  ejecutableDesde(m: Mantenimiento): string {
+    const iso = this.desdeISO(m);
+    return iso ? iso.split('-').reverse().join('/') : '—';
+  }
+
+  /** ¿Ya se llegó a la ventana? El servidor valida igual: fuera de ella no deja registrar el mantenimiento. */
+  dentroDeVentana(m: Mantenimiento | null | undefined): boolean {
+    if (!m) return false;
+    const desde = this.desdeISO(m);
+    if (!desde) return true;
+    const hoy = new Date();
+    const hoyISO = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+    return hoyISO >= desde;
+  }
+
+  /** Abre el modal de ejecución solo si ya se está dentro de la ventana de adelanto. */
+  ejecutar(m: Mantenimiento): void {
+    if (!this.dentroDeVentana(m)) return;
+    this.acciones.ejecutarMantenimiento(m);
+  }
+
   puedeEditar(m: Mantenimiento): boolean {
     return puedeEditarMantenimientos(this.authService) && (puedeGestionarMaquina(this.authService) || String(m.tecnicoAsignadoId || '') === this.miId);
   }

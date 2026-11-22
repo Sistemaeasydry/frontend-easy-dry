@@ -17,6 +17,7 @@ import { ToastService } from '../../../shared/services/toast.service';
 
 import { mensajeError } from '../trabajo-acciones/trabajo-acciones.component';
 
+import { nombreCompleto } from '../../../core/utils/nombre-persona';
 /**
  * Roles que pueden quedar asignados como responsables de una máquina (mismo criterio del servidor,
  * ver `ROLES_OPERADOR` en `maquinaria.permisos.ts`): solo pulidores, fijos o móviles. El líder NO
@@ -403,7 +404,7 @@ export class MaquinaAccionesComponent {
           const esFijo = u.modalidadPulidor === 'FIJO' || !!u.agenciaId;
           const sede = u.agenciaId ? (u.agencia || 'sede fija') : (u.region || 'zona');
           const rolLabel = `${esFijo ? 'Pulidor Fijo' : 'Pulidor Móvil'} · ${sede}`;
-          return { id: String(u.id), nombre: `${u.nombre} ${u.apellido}`.trim(), email: u.email, rolLabel };
+          return { id: String(u.id), nombre: nombreCompleto(u), email: u.email, rolLabel };
         });
     } catch {
       return [];

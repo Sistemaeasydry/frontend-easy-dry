@@ -21,6 +21,7 @@ import { fechaHoraLocal } from '../../core/utils/evidencia-maquinaria';
 import {
   puedeGestionarMaquina, puedeCancelarIncidentes, puedeEditarIncidentes, puedeReportarIncidente, puedeResolverIncidentes, puedeVerMaquinaria,
 } from '../../core/utils/maquinaria-permisos';
+import { CLASE_AVANCE, ETIQUETA_AVANCE, EtapaAvance, etapaAvance } from '../../core/utils/avance-atencion';
 import { TrabajoAccionesComponent } from '../maquinaria/trabajo-acciones/trabajo-acciones.component';
 import { MaquinariaDetalleModalComponent } from '../maquinaria/maquinaria-detalle-modal/maquinaria-detalle-modal.component';
 import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader/skeleton-loader.component';
@@ -129,6 +130,9 @@ import { StatCardComponent } from '../../shared/components/stat-card/stat-card.c
                     <span [class]="badgeNoAtendido">No atendida</span>
                   }
                   <span [class]="badgeClase('incidente', inc.estado)">{{ inc.estado }}</span>
+                  @if (inc.estadoRaw !== 'RESUELTO' && inc.estadoRaw !== 'CANCELADO' && etapa(inc) !== 'SIN_ASIGNAR') {
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-extrabold" [ngClass]="claseEtapa[etapa(inc)]">{{ etiquetaEtapa[etapa(inc)] }}</span>
+                  }
                 </div>
               </div>
 
@@ -189,6 +193,20 @@ import { StatCardComponent } from '../../shared/components/stat-card/stat-card.c
                     <i-lucide name="user-cog" class="w-4 h-4 shrink-0" aria-hidden="true"></i-lucide>
                     <span>{{ inc.tecnicoAsignadoId ? 'Reasignar' : 'Asignar' }}</span>
                   </button>
+                }
+                @if (puedeAvanzar(inc)) {
+                  @if (etapa(inc) === 'ASIGNADO') {
+                    <button type="button" (click)="acciones.marcarAvance('INCIDENTE', inc.id, 'EN_CAMINO')" class="btn btn-secondary w-full">
+                      <i-lucide name="truck" class="w-4 h-4 shrink-0" aria-hidden="true"></i-lucide>
+                      <span>Estoy en camino</span>
+                    </button>
+                  }
+                  @if (etapa(inc) === 'ASIGNADO' || etapa(inc) === 'EN_CAMINO') {
+                    <button type="button" (click)="acciones.marcarAvance('INCIDENTE', inc.id, 'ATENDIENDO')" class="btn btn-secondary w-full">
+                      <i-lucide name="wrench" class="w-4 h-4 shrink-0" aria-hidden="true"></i-lucide>
+                      <span>Ya la estoy atendiendo</span>
+                    </button>
+                  }
                 }
                 @if (puedeResolver(inc)) {
                   <button type="button" (click)="acciones.resolverIncidente(inc)"
@@ -276,6 +294,15 @@ import { StatCardComponent } from '../../shared/components/stat-card/stat-card.c
               <p class="text-slate-500">Reportado por <strong>{{ d.reportadoPor }}</strong> · Técnico: <strong>{{ d.tecnicoAsignadoId ? d.tecnicoAsignadoNombre : 'Sin asignar' }}</strong></p>
               @if (d.destinoTallerNombre) { <p class="text-slate-500">Taller destino: <strong>{{ d.destinoTallerNombre }}</strong></p> }
             </div>
+
+            @if (d.tecnicoAsignadoId) {
+              <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50 text-xs space-y-1">
+                <h4 class="font-bold text-slate-700 uppercase">Seguimiento de la atención</h4>
+                <p class="text-slate-700">Asignada a <b>{{ d.tecnicoAsignadoNombre }}</b>@if (d.fechaAsignacion) { · {{ hora(d.fechaAsignacion) }} }</p>
+                <p class="text-slate-700">En camino: <b class="font-mono">{{ d.fechaEnCamino ? hora(d.fechaEnCamino) : '—' }}</b></p>
+                <p class="text-slate-700">Atendiendo: <b class="font-mono">{{ d.fechaAtendiendo ? hora(d.fechaAtendiendo) : '—' }}</b></p>
+              </div>
+            }
 
             @if (d.estadoRaw === 'CANCELADO') {
               <div class="p-4 rounded-2xl border border-rose-200 bg-rose-50/40 space-y-1 text-xs">
@@ -496,6 +523,15 @@ export class IncidentesComponent implements OnInit, OnDestroy {
     // El coordinador/admin puede resolver una no asignada (queda auto-asignado); el técnico solo la suya.
     if (puedeGestionarMaquina(this.authService)) return !inc.tecnicoAsignadoId || String(inc.tecnicoAsignadoId) === this.miId;
     return String(inc.tecnicoAsignadoId || '') === this.miId;
+  }
+
+  readonly etiquetaEtapa = ETIQUETA_AVANCE;
+  readonly claseEtapa = CLASE_AVANCE;
+  etapa(inc: Incidente): EtapaAvance { return etapaAvance(inc); }
+
+  /** Solo el técnico asignado marca «en camino» y «atendiendo» (el servidor también lo exige). */
+  puedeAvanzar(inc: Incidente): boolean {
+    return String(inc.tecnicoAsignadoId || '') === this.miId && puedeResolverIncidentes(this.authService);
   }
 
   puedeEditar(inc: Incidente): boolean {

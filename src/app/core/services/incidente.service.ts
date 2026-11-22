@@ -130,6 +130,8 @@ export class IncidenteService {
       gestorAsignadorId: item.gestorAsignadorId,
       gestorAsignadorNombre: item.gestorAsignadorNombre,
       fechaAsignacion: item.fechaAsignacion,
+      fechaEnCamino: item.fechaEnCamino || null,
+      fechaAtendiendo: item.fechaAtendiendo || null,
       fotosFallo: delReporte.filter(e => e.kind === 'FOTO').map(e => e.url),
       videosFallo: delReporte.filter(e => e.kind === 'VIDEO').map(e => e.url),
       fotosReparacion: deReparacion.filter(e => e.kind === 'FOTO').map(e => e.url),
@@ -221,6 +223,18 @@ export class IncidenteService {
       gravedad,
       evidencias,
     });
+  }
+
+  /** El técnico asignado marca la incidencia «en camino» (avisa a quien la reportó y a los coordinadores). */
+  marcarEnCamino(incidenteId: string | number): Observable<Incidente> {
+    return this.http.post<any>(apiUrl('/maquinaria/incidentes/en-camino'), { incidenteId: String(incidenteId) })
+      .pipe(map(res => this.mapBackendIncidente(res?.data || res)));
+  }
+
+  /** El técnico asignado marca la incidencia «atendiendo». */
+  marcarAtendiendo(incidenteId: string | number): Observable<Incidente> {
+    return this.http.post<any>(apiUrl('/maquinaria/incidentes/atendiendo'), { incidenteId: String(incidenteId) })
+      .pipe(map(res => this.mapBackendIncidente(res?.data || res)));
   }
 
   /** Asigna la incidencia. Sin tecnicoId se auto-asigna el coordinador que llama. */

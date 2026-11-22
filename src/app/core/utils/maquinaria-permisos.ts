@@ -1,5 +1,5 @@
 import { AuthService } from '../services/auth.service';
-import { FUNCION } from './funciones-rol';
+import { FUNCION, funcionesDeRol } from './funciones-rol';
 
 /**
  * Permisos de UI del módulo de maquinaria: consultan los mismos códigos que el backend exige por endpoint.
@@ -17,6 +17,12 @@ export const puedeAsignarResponsableMaquina = (auth: AuthService) => auth.puede(
 export const puedeAsignarTecnico = (auth: AuthService) => auth.puede('taller.incidentes.asignar');
 export const puedeProgramarMantenimiento = (auth: AuthService) => auth.puede('taller.mantenimientos.programar');
 export const puedeExportarLimpiezas = (auth: AuthService) => auth.puede('reportes.maquinaria.limpiezas');
+/** La ventana de adelanto la define solo el coordinador de mantenimiento (o un administrador); el asistente solo la ve. */
+export const puedeConfigurarVentana = (auth: AuthService): boolean => {
+  const u: any = auth.getCurrentUser();
+  const f = funcionesDeRol(u?.capacidades, u?.role);
+  return f.has(FUNCION.COORD_MANTENIMIENTO) || f.has(FUNCION.ADMINISTRADOR);
+};
 export const puedeGestionarMaquina = (auth: AuthService) =>
   puedeTrasladarMaquina(auth) || puedeAsignarResponsableMaquina(auth) || puedeAsignarTecnico(auth) || puedeProgramarMantenimiento(auth);
 /** Historial (línea de tiempo) y movimientos. */
@@ -65,6 +71,13 @@ export const puedeSubirEvidenciaLimpieza = (auth: AuthService) => auth.puede('ta
 export const puedeVerLimpiezas = (auth: AuthService) => auth.puede('limpiezas.ver');
 /** Corregir observaciones o eliminar un registro de limpieza (el servidor acota además a su región). */
 export const puedeEditarLimpiezas = (auth: AuthService) => auth.puede('taller.limpiezas.editar');
+/** Aprobar o rechazar una limpieza: es de quien revisa (el coordinador de mantenimiento) y se puede activar a otros roles. */
+export const puedeAprobarLimpiezas = (auth: AuthService) => auth.puede('taller.limpiezas.aprobar');
+/** Eliminar un registro de limpieza queda solo para los administradores. */
+export const puedeEliminarLimpiezas = (auth: AuthService): boolean => {
+  const u: any = auth.getCurrentUser();
+  return funcionesDeRol(u?.capacidades, u?.role).has(FUNCION.ADMINISTRADOR) && puedeEditarLimpiezas(auth);
+};
 
 /**
  * Corregir el costo de un mantenimiento/incidencia ya cerrado (el técnico lo ingresa al cerrar, pero no

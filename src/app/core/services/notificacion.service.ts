@@ -12,6 +12,12 @@ const TIPO_A_NOTIFICACION_TIPO: Record<string, NotificacionTipo> = {
   MANTENIMIENTO_VENCIDO: 'alerta',
   STOCK_CRITICO: 'alerta',
   LIMPIEZA_ATRASADA: 'alerta',
+  LIMPIEZA_RECHAZADA: 'alerta',
+  LIMPIEZA_APROBADA: 'exito',
+  INCIDENCIA_EN_CAMINO: 'info',
+  INCIDENCIA_ATENDIENDO: 'info',
+  MANTENIMIENTO_EN_CAMINO: 'info',
+  MANTENIMIENTO_ATENDIENDO: 'info',
   DESPACHO_PENDIENTE: 'alerta',
   MAQUINA_DADA_DE_BAJA: 'alerta',
   INCIDENCIA_RESUELTA: 'exito',
@@ -50,6 +56,12 @@ const CATEGORIA_POR_TIPO: Record<string, NotificacionCategoria> = {
   APROBACION_PENDIENTE: 'aprobaciones',
   LIMPIEZA_RECORDATORIO: 'limpieza',
   LIMPIEZA_ATRASADA: 'limpieza',
+  LIMPIEZA_RECHAZADA: 'limpieza',
+  LIMPIEZA_APROBADA: 'limpieza',
+  INCIDENCIA_EN_CAMINO: 'mantenimiento',
+  INCIDENCIA_ATENDIENDO: 'mantenimiento',
+  MANTENIMIENTO_EN_CAMINO: 'mantenimiento',
+  MANTENIMIENTO_ATENDIENDO: 'mantenimiento',
 };
 
 const ENLACE_POR_ENTIDAD: Record<string, { enlace: string; enlaceLabel: string }> = {

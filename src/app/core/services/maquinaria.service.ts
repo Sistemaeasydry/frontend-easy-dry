@@ -72,6 +72,11 @@ export interface LimpiezaMaquinaria {
   registradoPorId: string;
   maquinaria?: { id: string; codigo: string; nombre: string };
   registradoPor?: { id: string; name: string; lastname: string };
+  /** PENDIENTE | APROBADA | RECHAZADA (revisión del coordinador de mantenimiento). */
+  estadoRevision?: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | string;
+  motivoRechazo?: string | null;
+  fechaRevision?: string | null;
+  revisadoPor?: { id: string; name: string; lastname: string } | null;
   createdAt?: string;
 }
 
@@ -400,7 +405,12 @@ export class MaquinariaService {
     return this.http.post<any>(apiUrl('/maquinaria/limpiezas/editar'), { limpiezaId, observaciones });
   }
 
-  /** Elimina un registro de limpieza (admin, supervisor y coordinador de mantenimiento de su región). */
+  /** Aprueba o rechaza una limpieza. Al rechazar el motivo es obligatorio y quien la registró recibe la notificación. */
+  decidirLimpieza(limpiezaId: string, aprobada: boolean, motivo?: string): Observable<any> {
+    return this.http.post<any>(apiUrl('/maquinaria/limpiezas/decidir'), { limpiezaId, aprobada, motivo: motivo?.trim() || undefined });
+  }
+
+  /** Elimina un registro de limpieza (solo administradores). */
   eliminarLimpieza(limpiezaId: string, motivo?: string): Observable<any> {
     return this.http.post<any>(apiUrl('/maquinaria/limpiezas/eliminar'), { limpiezaId, motivo: motivo?.trim() || undefined });
   }

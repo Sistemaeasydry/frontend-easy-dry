@@ -26,8 +26,9 @@ import { TrabajoAccionesComponent, mensajeError } from '../trabajo-acciones/trab
 import { MaquinaAccionesComponent } from '../maquina-acciones/maquina-acciones.component';
 import { fechaHoraLocal, fechaProgramadaLocal, validarFotos } from '../../../core/utils/evidencia-maquinaria';
 import { badgeClase, BADGE_NO_ATENDIDO } from '../../../core/utils/badges';
+import { nombreCompleto } from '../../../core/utils/nombre-persona';
 import {
-  puedeEditarMaquina, puedeCambiarArchivosMaquina, puedeActivarMaquina, puedeGestionarMaquina, puedeCancelarIncidentes, puedeTrasladarMaquina, puedeAsignarResponsableMaquina, puedeReportarIncidente,
+  puedeEditarMaquina, puedeCambiarArchivosMaquina, puedeActivarMaquina, puedeGestionarMaquina, puedeConfigurarVentana, puedeCancelarIncidentes, puedeTrasladarMaquina, puedeAsignarResponsableMaquina, puedeReportarIncidente,
   puedeVerTrazabilidad, puedeVerMantenimientos, puedeVerIncidentes, puedeResolverIncidentes, puedeEditarIncidentes,
   puedeEjecutarMantenimientos, puedeEditarMantenimientos, puedeAgregarEvidenciaMaquinaria, puedeSubirEvidenciaLimpieza, puedeVerLimpiezas, puedeAsignarTecnico, puedeProgramarMantenimiento, reportaSobreSuAlcance } from '../../../core/utils/maquinaria-permisos';
 
@@ -457,7 +458,7 @@ interface EventoVista {
                         </span>
                       </div>
                       <p class="font-bold text-sm mt-1 text-slate-900">{{ fechaProg(l.fecha) }}</p>
-                      <p class="text-xs text-slate-500">Registró: {{ (l.registradoPor?.name || '') + ' ' + (l.registradoPor?.lastname || '') }}</p>
+                      <p class="text-xs text-slate-500">Registró: {{ nombreCompleto(l.registradoPor) }}</p>
                     </div>
                   </div>
                   @if (l.observaciones) {
@@ -654,6 +655,7 @@ interface EventoVista {
   `,
 })
 export class MaquinariaDetalleModalComponent implements OnChanges, OnDestroy {
+  readonly nombreCompleto = nombreCompleto;
   private maquinariaService = inject(MaquinariaService);
   private incidenteService = inject(IncidenteService);
   private mantenimientoService = inject(MantenimientoService);
@@ -730,7 +732,7 @@ export class MaquinariaDetalleModalComponent implements OnChanges, OnDestroy {
   get puedeGestionar(): boolean { return puedeGestionarMaquina(this.authService); }
   /** Cada botón de la cabecera sigue su propia casilla del rol (no basta con tener alguna de gestión). */
   get puedeTransferir(): boolean { return puedeTrasladarMaquina(this.authService) || puedeAsignarResponsableMaquina(this.authService); }
-  get puedeVentana(): boolean { return this.puedeTransferir; }
+  get puedeVentana(): boolean { return this.puedeTransferir && puedeConfigurarVentana(this.authService); }
   get puedeProgramar(): boolean { return puedeProgramarMantenimiento(this.authService); }
   get puedeVerLinea(): boolean { return puedeVerTrazabilidad(this.authService); }
   get puedeVerMant(): boolean { return puedeVerMantenimientos(this.authService); }

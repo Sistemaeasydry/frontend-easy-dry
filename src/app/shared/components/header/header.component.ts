@@ -11,6 +11,7 @@ import { UiStateService } from '../../../core/services/ui-state.service';
 import { environment, isRealProfilePhoto } from '../../../core/config/env';
 import { ESCALA_POR_PRESET, ETIQUETA_PRESET, UiScaleService } from '../../../core/services/ui-scale.service';
 
+import { nombreCompleto } from '../../../core/utils/nombre-persona';
 @Component({
   selector: 'app-header',
   standalone: true,
@@ -92,7 +93,7 @@ import { ESCALA_POR_PRESET, ETIQUETA_PRESET, UiScaleService } from '../../../cor
               </div>
             }
             <div class="hidden md:flex flex-col">
-              <span class="text-xs font-bold text-slate-900 leading-tight">{{ u.nombre }} {{ u.apellido }}</span>
+              <span class="text-xs font-bold text-slate-900 leading-tight">{{ nombreCompleto(u) }}</span>
               <span class="text-[11px] font-extrabold text-purple-700 leading-tight uppercase tracking-wider">
                 {{ u.sucursal || 'EasyDry' }}
               </span>
@@ -105,6 +106,7 @@ import { ESCALA_POR_PRESET, ETIQUETA_PRESET, UiScaleService } from '../../../cor
   `
 })
 export class HeaderComponent implements OnInit {
+  readonly nombreCompleto = nombreCompleto;
   readonly env = environment;
   public authService = inject(AuthService);
   public uiState = inject(UiStateService);
@@ -154,7 +156,7 @@ export class HeaderComponent implements OnInit {
     // Cada aviso que llega en vivo salta como alerta en pantalla (solo si el rol tiene Notificaciones activas).
     this.socketNotificaciones.onNuevaNotificacion.subscribe((n) => {
       if (!this.verNotificaciones) return;
-      const tipo = ['STOCK_CRITICO', 'INCIDENTE_NUEVO', 'MANTENIMIENTO_VENCIDO', 'LIMPIEZA_ATRASADA', 'DESPACHO_FALTANTE', 'MAQUINA_DADA_DE_BAJA', 'ARCHIVADO_FALLIDO'].includes(n.tipo)
+      const tipo = ['STOCK_CRITICO', 'INCIDENTE_NUEVO', 'MANTENIMIENTO_VENCIDO', 'LIMPIEZA_ATRASADA', 'LIMPIEZA_RECHAZADA', 'DESPACHO_FALTANTE', 'MAQUINA_DADA_DE_BAJA', 'ARCHIVADO_FALLIDO'].includes(n.tipo)
         ? 'warning'
         : n.tipo === 'INCIDENCIA_RESUELTA' ? 'success' : 'info';
       this.toast.show(tipo, n.titulo, n.mensaje, 6000);

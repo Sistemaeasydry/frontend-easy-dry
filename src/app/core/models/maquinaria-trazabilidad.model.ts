@@ -1,3 +1,4 @@
+import { nombreCompleto } from '../utils/nombre-persona';
 // =========================================================
 // EasyDry® - Modelos de trazabilidad de maquinaria
 // (línea de tiempo, evidencias, ficha y respuestas paginadas)
@@ -27,6 +28,12 @@ export type TipoEventoMaquinaria =
   | 'MANTENIMIENTO_ASIGNADO'
   | 'MANTENIMIENTO_EJECUTADO'
   | 'MANTENIMIENTO_EDITADO'
+  | 'INCIDENTE_EN_CAMINO'
+  | 'INCIDENTE_ATENDIENDO'
+  | 'MANTENIMIENTO_EN_CAMINO'
+  | 'MANTENIMIENTO_ATENDIENDO'
+  | 'LIMPIEZA_APROBADA'
+  | 'LIMPIEZA_RECHAZADA'
   | 'EVIDENCIA_AGREGADA';
 
 /** Catálogo de tipos de evento con etiqueta, color y grupo para la línea de tiempo. */
@@ -46,6 +53,12 @@ export const TIPOS_EVENTO_MAQUINARIA: { codigo: TipoEventoMaquinaria; label: str
   { codigo: 'MANTENIMIENTO_ASIGNADO', label: 'Mantenimiento asignado', grupo: 'Mantenimientos', color: 'bg-violet-500' },
   { codigo: 'MANTENIMIENTO_EJECUTADO', label: 'Mantenimiento ejecutado', grupo: 'Mantenimientos', color: 'bg-emerald-500' },
   { codigo: 'MANTENIMIENTO_EDITADO', label: 'Mantenimiento editado', grupo: 'Mantenimientos', color: 'bg-amber-500' },
+  { codigo: 'INCIDENTE_EN_CAMINO', label: 'Técnico en camino (incidencia)', grupo: 'Incidencias', color: 'bg-amber-500' },
+  { codigo: 'INCIDENTE_ATENDIENDO', label: 'Atendiendo la incidencia', grupo: 'Incidencias', color: 'bg-emerald-500' },
+  { codigo: 'MANTENIMIENTO_EN_CAMINO', label: 'Asistente en camino (mantenimiento)', grupo: 'Mantenimientos', color: 'bg-amber-500' },
+  { codigo: 'MANTENIMIENTO_ATENDIENDO', label: 'Atendiendo el mantenimiento', grupo: 'Mantenimientos', color: 'bg-emerald-500' },
+  { codigo: 'LIMPIEZA_APROBADA', label: 'Limpieza aprobada', grupo: 'Limpieza', color: 'bg-emerald-500' },
+  { codigo: 'LIMPIEZA_RECHAZADA', label: 'Limpieza no aprobada', grupo: 'Limpieza', color: 'bg-rose-500' },
   { codigo: 'EVIDENCIA_AGREGADA', label: 'Evidencia agregada', grupo: 'Evidencias', color: 'bg-teal-500' },
 ];
 
@@ -174,5 +187,5 @@ export interface MovimientoMaquinariaDetalle {
 export function nombrePersona(u: any): string {
   if (!u) return '';
   if (typeof u === 'string') return u;
-  return `${u.name || u.nombre || ''} ${u.lastname || u.apellido || ''}`.trim() || u.email || '';
+  return nombreCompleto(u) || u.email || '';
 }
