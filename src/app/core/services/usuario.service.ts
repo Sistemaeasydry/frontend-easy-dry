@@ -102,6 +102,8 @@ export class UsuarioService {
       avatar: u.avatarUrl || u.avatar || '',
       estado: u.estado === 1 ? 'Activo' : 'Inactivo',
       telefono: u.telefono || '',
+      cedula: u.cedula || '',
+      ciudad: u.ciudad || '',
       fechaAsignacion: fechaFormatted,
       agencia: agenciaDisplay,
       sucursal: agenciaDisplay,
@@ -207,6 +209,8 @@ export class UsuarioService {
       bahiaId: usr.bahiaId || undefined,
       estado: usr.estado === 'Inactivo' ? 0 : 1,
       telefono: usr.telefono || undefined,
+      cedula: usr.cedula?.trim() || undefined,
+      ciudad: usr.ciudad?.trim() || undefined,
     };
 
     if (!isAsistente && !usr.bodegaId) {
@@ -254,6 +258,9 @@ export class UsuarioService {
       lastname: usr.apellido,
       email: usr.email,
       telefono: usr.telefono ?? '',
+      // Vacío quita el dato; sin enviar, no se toca (quien no ve la cédula no la pisa).
+      ...(usr.cedula !== undefined ? { cedula: usr.cedula.trim() } : {}),
+      ...(usr.ciudad !== undefined ? { ciudad: usr.ciudad.trim() } : {}),
       estado: usr.estado === 'Activo' ? 1 : 0,
       rolNombre: usr.rol,
       roleId: usr.roleId || (usr as any).roleId || undefined,

@@ -33,6 +33,7 @@ import { isRealProfilePhoto } from '../../core/config/env';
 import { NotaAmbito, construirNotaAmbito } from './ambito-rol';
 import { motivoPasswordDebil, passwordCumplePolitica } from '../../core/utils/password-politica';
 
+import { nombreCompleto } from '../../core/utils/nombre-persona';
 interface AmbitoInfo {
   codigo: string;
   corto: string;
@@ -61,6 +62,7 @@ const COLUMNAS_USUARIOS: TableColumn[] = [
 const COLUMNAS_ROLES: TableColumn[] = [
   { key: 'namerol', label: 'Rol / Perfil', sortable: true, defaultSort: 'asc' },
   { key: 'descripcion', label: 'Descripción' },
+  { key: 'categoria', label: 'Categoría' },
   { key: 'ambito', label: 'Ámbito' },
   { key: 'permisos', label: 'Permisos' },
   { key: 'usuarios', label: 'Usuarios', sortable: true },
@@ -323,7 +325,7 @@ const COLUMNAS_ROLES: TableColumn[] = [
               <ng-template appCell="nombre" let-u>
                 <div class="flex items-center gap-3">
                   @if (isRealProfilePhoto(u.avatar)) {
-                    <img loading="lazy" decoding="async" [appAvatar]="u.avatar" [appAvatarIniciales]="(u.nombre || '?').charAt(0) + (u.apellido || '').charAt(0)" alt="Foto de {{ u.nombre }} {{ u.apellido }}" class="w-9 h-9 rounded-full object-cover border-2" [ngClass]="u.estado === 'Activo' ? 'border-easydry-blue/20' : 'border-slate-300 grayscale'">
+                    <img loading="lazy" decoding="async" [appAvatar]="u.avatar" [appAvatarIniciales]="(u.nombre || '?').charAt(0) + (u.apellido || '').charAt(0)" alt="Foto de {{ nombreCompleto(u) }}" class="w-9 h-9 rounded-full object-cover border-2" [ngClass]="u.estado === 'Activo' ? 'border-easydry-blue/20' : 'border-slate-300 grayscale'">
                   } @else {
                     <div class="w-9 h-9 rounded-full bg-slate-100 border-2 flex items-center justify-center text-xs font-extrabold text-slate-500" [ngClass]="u.estado === 'Activo' ? 'border-easydry-blue/20' : 'border-slate-300 grayscale'">
                       {{ (u.nombre || '?').charAt(0) }}{{ (u.apellido || '').charAt(0) }}
@@ -331,7 +333,7 @@ const COLUMNAS_ROLES: TableColumn[] = [
                   }
                   <div>
                     <div class="flex items-center gap-1.5">
-                      <p class="font-bold text-slate-900 text-xs">{{ u.nombre }} {{ u.apellido }}</p>
+                      <p class="font-bold text-slate-900 text-xs">{{ u.apellido }} {{ u.nombre }}</p>
                       @if (u.estado === 'Inactivo') {
                         <span class="badge badge-danger">Inactivo</span>
                       }
@@ -577,6 +579,12 @@ const COLUMNAS_ROLES: TableColumn[] = [
                 <p class="line-clamp-2 text-xs text-slate-600 max-w-xs" [title]="rol.descripcion">
                   {{ rol.descripcion || 'Sin descripción registrada' }}
                 </p>
+              </ng-template>
+
+              <ng-template appCell="categoria" let-rol>
+                <span class="text-xs font-bold px-2 py-0.5 rounded-lg whitespace-nowrap border" [ngClass]="rol.categoria === 'ADMINISTRACION' ? 'text-indigo-800 bg-indigo-50 border-indigo-200' : 'text-emerald-800 bg-emerald-50 border-emerald-200'">
+                  {{ rol.categoria === 'ADMINISTRACION' ? 'Administración' : 'Operador' }}
+                </span>
               </ng-template>
 
               <ng-template appCell="ambito" let-rol>
@@ -961,6 +969,26 @@ const COLUMNAS_ROLES: TableColumn[] = [
             }
           </div>
 
+          <!-- Cédula (única, 10 dígitos) y ciudad: opcionales -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="usuarios-f7c" class="block text-xs font-bold text-slate-700 uppercase mb-1">Cédula (Opcional)</label>
+              <input id="usuarios-f7c" type="text" inputmode="numeric" maxlength="10" autocomplete="off"
+                [(ngModel)]="usuarioForm.cedula" name="cedula" placeholder="10 dígitos"
+                class="w-full p-2.5 border rounded-xl text-sm font-mono transition-all outline-none"
+                [ngClass]="cedulaInvalida ? 'border-rose-500 bg-rose-50/20 ring-2 ring-rose-200' : 'border-slate-200 focus:border-easydry-blue focus:ring-2 focus:ring-easydry-blue/20'">
+              @if (cedulaInvalida) {
+                <p class="text-xs text-rose-600 font-semibold mt-1">La cédula debe tener 10 dígitos, o deje el campo vacío.</p>
+              }
+            </div>
+            <div>
+              <label for="usuarios-f7ci" class="block text-xs font-bold text-slate-700 uppercase mb-1">Ciudad (Opcional)</label>
+              <input id="usuarios-f7ci" type="text" maxlength="60" autocomplete="off"
+                [(ngModel)]="usuarioForm.ciudad" name="ciudad" placeholder="ej. Quito"
+                class="w-full p-2.5 border border-slate-200 rounded-xl text-sm transition-all outline-none focus:border-easydry-blue focus:ring-2 focus:ring-easydry-blue/20">
+            </div>
+          </div>
+
           <!-- Credenciales de acceso JWT -->
           @if (!editandoUsuario) {
             <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
@@ -1201,6 +1229,16 @@ const COLUMNAS_ROLES: TableColumn[] = [
                 class="w-full p-2.5 border rounded-xl text-xs disabled:bg-slate-50 disabled:text-slate-500"></textarea>
             </div>
 
+            <!-- Categoría -->
+            <div>
+              <label for="usuarios-rol-categoria" class="block text-xs font-bold text-slate-700 uppercase mb-1">Categoría</label>
+              <select id="usuarios-rol-categoria" name="rolCategoria" [(ngModel)]="rolForm.categoria" [disabled]="soloLecturaRol"
+                class="w-full p-2.5 border rounded-xl text-sm disabled:bg-slate-50 disabled:text-slate-500">
+                <option value="ADMINISTRACION">Administración</option>
+                <option value="OPERADOR">Operador</option>
+              </select>
+            </div>
+
             <!-- Alcance de los datos -->
             <fieldset>
               <legend class="block text-xs font-bold text-slate-700 uppercase mb-1">Alcance de los datos</legend>
@@ -1301,7 +1339,7 @@ const COLUMNAS_ROLES: TableColumn[] = [
         <div class="space-y-4 py-2">
           @if (usuarioPassword) {
             <p class="text-xs text-slate-600">
-              Nueva contraseña de <strong class="text-slate-900">{{ usuarioPassword.nombre }} {{ usuarioPassword.apellido }}</strong>
+              Nueva contraseña de <strong class="text-slate-900">{{ nombreCompleto(usuarioPassword) }}</strong>
               <span class="font-mono text-slate-500">({{ usuarioPassword.email }})</span>. Las sesiones abiertas del usuario se cerrarán.
             </p>
           }
@@ -1385,6 +1423,7 @@ const COLUMNAS_ROLES: TableColumn[] = [
   `
 })
 export class UsuariosComponent implements OnInit, OnDestroy {
+  readonly nombreCompleto = nombreCompleto;
   readonly isRealProfilePhoto = isRealProfilePhoto;
   activeTab: 'usuarios' | 'roles' = 'usuarios';
 
@@ -1438,6 +1477,8 @@ export class UsuariosComponent implements OnInit, OnDestroy {
     estado: 'Activo' | 'Inactivo';
     email: string;
     telefono: string;
+    cedula: string;
+    ciudad: string;
     password?: string;
     confirmPassword?: string;
     cambiarPassword?: boolean;
@@ -1456,6 +1497,8 @@ export class UsuariosComponent implements OnInit, OnDestroy {
     estado: 'Activo',
     email: '',
     telefono: '',
+    cedula: '',
+    ciudad: '',
     password: '',
     confirmPassword: '',
     cambiarPassword: false,
@@ -1472,6 +1515,12 @@ export class UsuariosComponent implements OnInit, OnDestroy {
 
   get nombreInvalido(): boolean {
     return this.usuarioFormSubmitted && !this.usuarioForm.nombre?.trim();
+  }
+
+  /** La cédula es opcional; si se escribe, 10 dígitos. */
+  get cedulaInvalida(): boolean {
+    const v = String(this.usuarioForm.cedula || '').trim();
+    return !!v && !/^\d{10}$/.test(v);
   }
 
   get telefonoInvalido(): boolean {
@@ -1528,6 +1577,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
     nombre: string;
     descripcion: string;
     ambito: string;
+    categoria: string;
     /** Códigos del catálogo de páginas activos (páginas, sub-páginas y acciones). */
     paginas: string[];
     esSistema: boolean;
@@ -1535,6 +1585,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
     nombre: '',
     descripcion: '',
     ambito: 'AGENCIA',
+    categoria: 'OPERADOR',
     paginas: [],
     esSistema: false,
   };
@@ -2290,6 +2341,8 @@ export class UsuariosComponent implements OnInit, OnDestroy {
       estado: 'Activo',
       email: '',
       telefono: '',
+      cedula: '',
+      ciudad: '',
       password: '',
       confirmPassword: '',
       cambiarPassword: true,
@@ -2340,6 +2393,8 @@ export class UsuariosComponent implements OnInit, OnDestroy {
       estado: u.estado === 'Inactivo' ? 'Inactivo' : 'Activo',
       email: u.email,
       telefono: u.telefono || '',
+      cedula: u.cedula || '',
+      ciudad: u.ciudad || '',
       password: '',
       confirmPassword: '',
       cambiarPassword: false,
@@ -2400,12 +2455,12 @@ export class UsuariosComponent implements OnInit, OnDestroy {
         if (nuevoEstado === 'Inactivo') {
           this.toastService.warning(
             'Usuario Desactivado',
-            `${u.nombre} ${u.apellido} ha sido marcado como Inactivo. No podrá iniciar sesión ni aparecerá en listas de asignación.`
+            `${nombreCompleto(u)} ha sido marcado como Inactivo. No podrá iniciar sesión ni aparecerá en listas de asignación.`
           );
         } else {
           this.toastService.success(
             'Usuario Reactivado',
-            `${u.nombre} ${u.apellido} ahora está Activo y disponible para iniciar sesión y ser asignado.`
+            `${nombreCompleto(u)} ahora está Activo y disponible para iniciar sesión y ser asignado.`
           );
         }
       },
@@ -2456,7 +2511,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
     this.guardandoPassword = true;
     this.usuarioService.asignarPassword(u.id, this.passwordNueva).subscribe({
       next: () => {
-        this.toastService.success('Contraseña actualizada', `Se asignó la nueva contraseña de ${u.nombre} ${u.apellido}. Sus sesiones abiertas se cerraron.`);
+        this.toastService.success('Contraseña actualizada', `Se asignó la nueva contraseña de ${nombreCompleto(u)}. Sus sesiones abiertas se cerraron.`);
         this.guardandoPassword = false;
         this.cerrarModalPassword();
       },
@@ -2527,7 +2582,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
   guardarUsuario() {
     if (this.guardandoUsuario) return;
     this.usuarioFormSubmitted = true;
-    if (this.nombreInvalido || this.emailInvalido || this.telefonoInvalido || this.passwordInvalido || this.confirmPasswordInvalido) {
+    if (this.nombreInvalido || this.emailInvalido || this.telefonoInvalido || this.cedulaInvalida || this.passwordInvalido || this.confirmPasswordInvalido) {
       this.toastService.warning('Campos Requeridos', 'Por favor complete los campos obligatorios señalados en rojo.');
       return;
     }
@@ -2703,6 +2758,8 @@ export class UsuariosComponent implements OnInit, OnDestroy {
         estado: nuevoEstado,
         email: this.usuarioForm.email.trim(),
         telefono: this.usuarioForm.telefono.trim(),
+        cedula: this.usuarioForm.cedula.trim(),
+        ciudad: this.usuarioForm.ciudad.trim(),
         modalidadPulidor: isPulidor ? modalidad.modalidadPulidor : undefined,
         servicioIds: isPulidor ? this.serviciosEspecialesCatalogo.map(s => Number(s.id)) : [],
         ...(this.usuarioForm.cambiarPassword && this.usuarioForm.password?.trim()
@@ -2793,6 +2850,8 @@ export class UsuariosComponent implements OnInit, OnDestroy {
         estado: this.usuarioForm.estado,
         email: this.usuarioForm.email.trim(),
         telefono: this.usuarioForm.telefono.trim(),
+        cedula: this.usuarioForm.cedula.trim(),
+        ciudad: this.usuarioForm.ciudad.trim(),
         fechaAsignacion: new Date().toISOString().split('T')[0],
         avatar: '',
         modalidadPulidor: isPulidor ? modalidad.modalidadPulidor : undefined,
@@ -2813,7 +2872,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
           this.mostrarNuevoUsuario();
           this.toastService.success(
             'Usuario Registrado',
-            `Usuario ${creado.nombre} ${creado.apellido} registrado exitosamente con sus credenciales de acceso.`
+            `Usuario ${nombreCompleto(creado)} registrado exitosamente con sus credenciales de acceso.`
           );
           this.modalUsuarioOpen = false;
         },
@@ -2958,6 +3017,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
       nombre: '',
       descripcion: '',
       ambito: 'AGENCIA',
+      categoria: 'OPERADOR',
       paginas: [],
       esSistema: false,
     };
@@ -2973,6 +3033,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
       nombre: rol.nombre,
       descripcion: rol.descripcion,
       ambito: rol.ambito || 'AGENCIA',
+      categoria: rol.categoria || 'OPERADOR',
       paginas: [...(rol.paginas || [])],
       esSistema: rol.esSistema,
     };
@@ -3008,6 +3069,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
       this.rolService.actualizarRol(rolId, {
         descripcion: this.rolForm.descripcion,
         ambito: this.rolForm.ambito,
+        categoria: this.rolForm.categoria,
         capacidades: this.rolForm.paginas,
       }).pipe(finalize(() => { this.guardandoRol = false; })).subscribe({
         next: (res) => {
@@ -3022,6 +3084,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
         nombre: this.rolForm.nombre,
         descripcion: this.rolForm.descripcion,
         ambito: this.rolForm.ambito,
+        categoria: this.rolForm.categoria,
         capacidades: this.rolForm.paginas,
       }).pipe(finalize(() => { this.guardandoRol = false; })).subscribe({
         next: (creado) => {

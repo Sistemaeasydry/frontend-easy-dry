@@ -16,6 +16,7 @@ import { passwordCumplePolitica } from '../../core/utils/password-politica';
 import { apiUrl } from '../../core/config/env';
 import { ImageCropModalComponent } from '../../shared/components/image-crop-modal/image-crop-modal.component';
 
+import { nombreCompleto } from '../../core/utils/nombre-persona';
 @Component({
   selector: 'app-perfil',
   standalone: true,
@@ -157,7 +158,7 @@ import { ImageCropModalComponent } from '../../shared/components/image-crop-moda
               </div>
             }
 
-            <h3 class="text-lg font-bold text-slate-900 leading-snug">{{ currentUser?.nombre }} {{ currentUser?.apellido }}</h3>
+            <h3 class="text-lg font-bold text-slate-900 leading-snug">{{ nombreCompleto(currentUser) }}</h3>
             <p class="text-[11px] font-extrabold text-easydry-blue uppercase tracking-widest mt-0.5">{{ rolLabel }}</p>
             
             <div class="mt-6 pt-5 border-t border-slate-100 text-left space-y-3 text-xs">
@@ -208,7 +209,7 @@ import { ImageCropModalComponent } from '../../shared/components/image-crop-moda
                   <div>
                     <p class="font-bold text-amber-950">Restricción de Edición Administrativa</p>
                     <p class="text-xs text-amber-800 mt-1 leading-relaxed">
-                      Por políticas de seguridad de EasyDry®, los nombres, apellidos y correos institucionales solo pueden ser modificados por un <strong>administrador</strong>. Si necesitas actualizar tus datos oficiales, contacta a la Gerencia o Administración Central.
+                      Por políticas de seguridad de EasyDry®, los nombres, apellidos y correos institucionales solo pueden ser modificados por un <strong>administrador</strong>. Tu cédula y tu celular sí los puedes editar tú. Si necesitas actualizar tus datos oficiales, contacta a la Gerencia o Administración Central.
                     </p>
                   </div>
                 </div>
@@ -262,6 +263,31 @@ import { ImageCropModalComponent } from '../../shared/components/image-crop-moda
                     [readonly]="!isAdmin || !modoEdicion"
                     class="w-full pl-10 p-2.5 border rounded-xl text-xs font-semibold transition-all"
                     [ngClass]="(isAdmin && modoEdicion) ? 'bg-white border-easydry-blue focus:ring-2 focus:ring-easydry-blue text-slate-900' : 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed'">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label for="perfil-cedula" class="block text-[11px] font-bold text-slate-700 uppercase mb-1.5">Cédula</label>
+                  <input id="perfil-cedula"
+                    type="text" inputmode="numeric" maxlength="10" autocomplete="off"
+                    [(ngModel)]="perfilForm.cedula"
+                    name="cedula"
+                    placeholder="10 dígitos"
+                    [disabled]="!modoEdicion"
+                    class="w-full p-2.5 border rounded-xl text-xs font-semibold transition-all"
+                    [ngClass]="modoEdicion ? 'bg-white border-easydry-blue focus:ring-2 focus:ring-easydry-blue text-slate-900' : 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed'">
+                </div>
+                <div>
+                  <label for="perfil-telefono" class="block text-[11px] font-bold text-slate-700 uppercase mb-1.5">Celular</label>
+                  <input id="perfil-telefono"
+                    type="tel" inputmode="numeric" maxlength="10" autocomplete="tel"
+                    [(ngModel)]="perfilForm.telefono"
+                    name="telefono"
+                    placeholder="0991234567"
+                    [disabled]="!modoEdicion"
+                    class="w-full p-2.5 border rounded-xl text-xs font-semibold transition-all"
+                    [ngClass]="modoEdicion ? 'bg-white border-easydry-blue focus:ring-2 focus:ring-easydry-blue text-slate-900' : 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed'">
                 </div>
               </div>
 
@@ -479,6 +505,7 @@ import { ImageCropModalComponent } from '../../shared/components/image-crop-moda
   `
 })
 export class PerfilComponent implements OnInit {
+  readonly nombreCompleto = nombreCompleto;
   @HostListener('document:keydown.escape')
   cerrarModalesConEsc(): void {
     if (this.showConfirmGuardarModal) this.showConfirmGuardarModal = false;
@@ -560,6 +587,8 @@ export class PerfilComponent implements OnInit {
     nombre: '',
     apellido: '',
     email: '',
+    telefono: '',
+    cedula: '',
     avatar: ''
   };
 
@@ -576,11 +605,17 @@ export class PerfilComponent implements OnInit {
     nombre: '',
     apellido: '',
     email: '',
+    telefono: '',
+    cedula: '',
     avatar: ''
   };
 
   ngOnInit(): void {
     this.cargarDatosUsuario();
+    // La sesión guardada puede ser anterior a estos campos: se traen del servidor (sin pisar lo que se esté editando).
+    this.authService.verificarPermisosActualizados().subscribe((ok) => {
+      if (ok && !this.modoEdicion) this.cargarDatosUsuario();
+    });
   }
 
   cargarDatosUsuario(): void {
@@ -594,6 +629,8 @@ export class PerfilComponent implements OnInit {
       nombre: this.currentUser.nombre || '',
       apellido: this.currentUser.apellido || '',
       email: this.currentUser.email || '',
+      telefono: this.currentUser.telefono || '',
+      cedula: this.currentUser.cedula || '',
       avatar: isRealProfilePhoto(this.currentUser.avatar) ? this.currentUser.avatar || '' : ''
     };
     this.pendingAvatarFile = null;
@@ -620,6 +657,8 @@ export class PerfilComponent implements OnInit {
       this.perfilForm.nombre !== this.backupForm.nombre ||
       this.perfilForm.apellido !== this.backupForm.apellido ||
       this.perfilForm.email !== this.backupForm.email ||
+      this.perfilForm.telefono !== this.backupForm.telefono ||
+      this.perfilForm.cedula !== this.backupForm.cedula ||
       this.perfilForm.avatar !== this.backupForm.avatar
     );
   }
@@ -693,6 +732,17 @@ export class PerfilComponent implements OnInit {
       }
     }
 
+    const telefono = this.perfilForm.telefono.replace(/\s+/g, '');
+    const cedula = this.perfilForm.cedula.replace(/\s+/g, '');
+    if (telefono && !/^09\d{8}$/.test(telefono)) {
+      this.toastService.warning('Celular inválido', 'Debe tener 10 dígitos y empezar con 09 (ej. 0991234567).');
+      return;
+    }
+    if (cedula && !/^\d{10}$/.test(cedula)) {
+      this.toastService.warning('Cédula inválida', 'La cédula debe tener 10 dígitos.');
+      return;
+    }
+
     this.showConfirmGuardarModal = true;
   }
 
@@ -712,6 +762,9 @@ export class PerfilComponent implements OnInit {
 
       const payload: Partial<UsuarioAuth> = {
         avatar: avatarUrl,
+        // Celular y cédula los edita cada persona, sea cual sea su rol.
+        telefono: this.perfilForm.telefono.replace(/\s+/g, ''),
+        cedula: this.perfilForm.cedula.replace(/\s+/g, ''),
       };
 
       if (this.isAdmin) {

@@ -138,6 +138,8 @@ export interface RolPersonalizado {
   paginas?: string[];
   /** Sobre qué datos actúa: GLOBAL, REGION, AGENCIA o PROPIO. */
   ambito?: string;
+  /** Tipo de personal del rol. */
+  categoria?: 'ADMINISTRACION' | 'OPERADOR';
   fechaCreacion: string;
   fechaModificacion?: string;
   usuariosCount?: number;
@@ -176,6 +178,11 @@ export interface UsuarioAuth {
   modalidadPulidor?: 'FIJO' | 'MOVIL';
   estado: 'Activo' | 'Inactivo';
   avatar?: string;
+  /** Celular (09XXXXXXXX) y cédula: cada persona los edita desde su perfil. */
+  telefono?: string;
+  cedula?: string;
+  /** Ciudad de la persona (texto libre). */
+  ciudad?: string;
   /** Access token JWT (localStorage en web, SecureStore en móvil) */
   token?: string;
   /** Solo la app móvil lo guarda; en la web el refresh token es una cookie HttpOnly y no pasa por JavaScript */
@@ -264,7 +271,7 @@ export const ROLE_LABELS: Record<string, string> = {
   [Role.SUPER_ADMIN]: 'Super Administrador',
   [Role.ADMIN]: 'Administrador',
   [Role.APROBADOR]: 'Aprobador',
-  [Role.SUPERVISOR]: 'Supervisor Regional',
+  [Role.SUPERVISOR]: 'Coordinador Regional',
   [Role.JEFE_COMERCIAL]: 'Jefe Comercial',
   [Role.COORD_COMERCIAL]: 'Coordinador Comercial',
   [Role.LIDER]: 'Líder Operador',

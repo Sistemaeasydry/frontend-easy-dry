@@ -20,6 +20,7 @@ import { apiUrl, isRealProfilePhoto } from '../config/env';
 import { MENU_CONFIG } from '../config/menu.config';
 import { ToastService } from '../../shared/services/toast.service';
 
+import { nombreCompleto } from '../utils/nombre-persona';
 const STORAGE_KEY = 'easydry_auth_user_v5';
 /** Renovar el access token ~5 min antes de que expire. */
 const REFRESH_SKEW_MS = 5 * 60 * 1000;
@@ -383,6 +384,8 @@ export class AuthService {
       estado: userData.estado === 1 ? 'Activo' : 'Inactivo',
       permisos,
       avatar: this.sanitizeAvatar(userData.avatar || userData.avatarUrl || ''),
+      telefono: userData.telefono ?? base?.telefono ?? '',
+      cedula: userData.cedula ?? base?.cedula ?? '',
     };
   }
 
@@ -469,6 +472,8 @@ export class AuthService {
       name: data.nombre,
       lastname: data.apellido,
       email: data.email,
+      telefono: data.telefono,
+      cedula: data.cedula,
     }).pipe(
       map((res) => {
         const remote = res?.user || {};
@@ -479,11 +484,17 @@ export class AuthService {
           apellido: remote.lastname || data.apellido || current.apellido,
           email: remote.email || data.email || current.email,
           avatar: this.sanitizeAvatar(remote.avatar || remote.avatarUrl || data.avatar || ''),
+          telefono: remote.telefono ?? data.telefono ?? current.telefono ?? '',
+          cedula: remote.cedula ?? data.cedula ?? current.cedula ?? '',
         };
         this.setUser(updated);
         return { success: true, user: updated };
       }),
-      catchError(() => of({ success: false, user: current }))
+      catchError((err) => {
+        const m = err?.error?.message;
+        this.toast.error('No se pudo guardar el perfil', Array.isArray(m) ? m.join(' ') : (typeof m === 'string' && m ? m : 'El servidor no aceptó los cambios.'));
+        return of({ success: false, user: current });
+      })
     );
   }
 
@@ -700,7 +711,7 @@ export class AuthService {
   getUserContextLabel(): string {
     const u = this.currentUserSubject.value;
     if (!u) return 'EasyDry';
-    return `${u.nombre} ${u.apellido} | ${u.rolNombre || u.role} (${u.region || u.sucursal || 'EasyDry'})`;
+    return `${nombreCompleto(u)} | ${u.rolNombre || u.role} (${u.region || u.sucursal || 'EasyDry'})`;
   }
 
   isCoordServiciosEspeciales(): boolean {
