@@ -303,6 +303,75 @@ import {
         </div>
       }
 
+      <!-- Modal de detalle de reto (activo o finalizado) -->
+      @if (retoDetalle) {
+        <div appModalPortal role="dialog" aria-modal="true" aria-labelledby="reto-detalle-title" class="fixed inset-0 z-[10050] flex items-center justify-center animate-fade-in">
+          <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" (click)="cerrarDetalleReto()"></div>
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="shrink-0 px-6 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
+              <div>
+                <h3 id="reto-detalle-title" class="font-extrabold text-slate-900 text-lg">{{ retoDetalle.titulo }}</h3>
+                <p class="text-xs text-slate-500">{{ retoDetalle.fechaInicio }} a {{ retoDetalle.fechaFin }} · {{ retoDetalle.estado || 'ACTIVO' }}</p>
+              </div>
+              <button type="button" (click)="cerrarDetalleReto()" class="p-1.5 min-w-9 min-h-9 inline-flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer" aria-label="Cerrar">
+                <i-lucide aria-hidden="true" name="x" class="w-4 h-4"></i-lucide>
+              </button>
+            </div>
+            <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4 text-sm text-slate-700">
+              @if (retoDetalle.descripcion) { <p>{{ retoDetalle.descripcion }}</p> }
+              <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
+                <dt class="font-bold text-slate-500">Premio</dt><dd>{{ retoDetalle.premio || '—' }}</dd>
+                <dt class="font-bold text-slate-500">Compiten</dt><dd>{{ participantesDe(retoDetalle) }}</dd>
+                <dt class="font-bold text-slate-500">Cuenta</dt><dd>{{ serviciosDe(retoDetalle) }}</dd>
+                <dt class="font-bold text-slate-500">Se mide</dt><dd>{{ etiquetaMetrica[retoDetalle.metrica].nombre }}</dd>
+                <dt class="font-bold text-slate-500">Ganador</dt><dd>{{ resumenGanador(retoDetalle) }}</dd>
+                <dt class="font-bold text-slate-500">Creado por</dt><dd>{{ retoDetalle.creadorNombre || 'Administración' }}</dd>
+                @if (retoDetalle.cerradoEn) {
+                  <dt class="font-bold text-slate-500">Cerrado</dt><dd>{{ retoDetalle.cerradoEn | date:'dd/MM/yyyy HH:mm' }}</dd>
+                }
+                @if (retoDetalle.resultado) {
+                  <dt class="font-bold text-slate-500">Resultado</dt><dd>{{ retoDetalle.resultado }}</dd>
+                }
+              </dl>
+
+              @if (retoDetalle.ganadores.length) {
+                <div>
+                  <h4 class="text-xs font-extrabold text-amber-700 uppercase tracking-wide mb-1.5">{{ retoDetalle.ganadores.length > 1 ? 'Ganadores' : 'Ganador' }}</h4>
+                  <ul class="space-y-1">
+                    @for (g of retoDetalle.ganadores; track g.participanteId) {
+                      <li class="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 text-xs">
+                        <span class="font-bold">{{ g.posicion }}. {{ g.nombre }}</span>
+                        <span class="font-mono">{{ formatearValor(g.valor, retoDetalle.metrica) }}</span>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              }
+
+              <div>
+                <h4 class="text-xs font-extrabold text-slate-600 uppercase tracking-wide mb-1.5">Clasificación</h4>
+                @if (detalleCargando) {
+                  <p class="text-xs text-slate-400">Cargando…</p>
+                } @else if (detalleError) {
+                  <p role="alert" class="text-xs text-rose-600">{{ detalleError }}</p>
+                } @else if (detalleRanking && detalleRanking.participantes.length) {
+                  <ol class="space-y-1">
+                    @for (fila of detalleRanking.participantes; track fila.participanteId) {
+                      <li class="flex items-center justify-between border border-slate-100 rounded-lg px-3 py-1.5 text-xs">
+                        <span><b>{{ fila.posicion }}.</b> {{ fila.nombre }}</span>
+                        <span class="font-mono">{{ formatearValor(fila.valor, detalleRanking.metrica) }}</span>
+                      </li>
+                    }
+                  </ol>
+                } @else {
+                  <p class="text-xs text-slate-400">No hay participantes para este reto.</p>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
       <!-- Modal de Cierre de Reto -->
       @if (showCerrarModal) {
         <div appModalPortal role="dialog" aria-modal="true" aria-labelledby="reto-cerrar-title" class="fixed inset-0 z-[10050] flex items-center justify-center animate-fade-in">
@@ -474,7 +543,7 @@ import {
               aria-label="Filtrar retos por vigencia"
               class="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-1.5 font-semibold cursor-pointer focus:ring-2 focus:ring-easydry-blue">
               <option value="ACTIVOS">Activos</option>
-              <option value="VENCIDOS">Vencidos</option>
+              <option value="VENCIDOS">Historial (finalizados)</option>
               <option value="TODOS">Todos</option>
             </select>
           </label>
@@ -541,6 +610,13 @@ import {
 
           <ng-template appCell="acciones" let-reto>
             <div class="flex items-center justify-end gap-1">
+              <button
+                type="button"
+                (click)="verDetalleReto(reto)"
+                title="Ver detalle"
+                class="p-1.5 min-w-9 min-h-9 inline-flex items-center justify-center text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer" aria-label="Ver detalle del reto">
+                <i-lucide aria-hidden="true" name="eye" class="w-4 h-4"></i-lucide>
+              </button>
               @if (canEditarReto(reto)) {
                 <button
                   type="button"
@@ -627,6 +703,10 @@ export class ProductividadComponent implements OnInit, OnDestroy {
   guardandoEdicionReto = false;
   retoToEditar: Reto | null = null;
   formEditarReto = { titulo: '', descripcion: '', premio: '', fechaInicio: '', fechaFin: '' };
+  retoDetalle: Reto | null = null;
+  detalleRanking: RankingReto | null = null;
+  detalleCargando = false;
+  detalleError = '';
   showCerrarModal = false;
   retoToCerrar: Reto | null = null;
   cierreResultado = '';
@@ -896,6 +976,31 @@ export class ProductividadComponent implements OnInit, OnDestroy {
         }
       });
     }
+  }
+
+  /** Detalle de un reto (en el historial: ganadores guardados y clasificación final). */
+  verDetalleReto(reto: Reto): void {
+    this.retoDetalle = reto;
+    this.detalleRanking = null;
+    this.detalleError = '';
+    this.detalleCargando = true;
+    this.retosService.getRankingReto(reto.id).subscribe({
+      next: (r) => {
+        if (this.retoDetalle?.id !== reto.id) return;
+        this.detalleRanking = r;
+        this.detalleCargando = false;
+      },
+      error: () => {
+        if (this.retoDetalle?.id !== reto.id) return;
+        this.detalleCargando = false;
+        this.detalleError = 'No se pudo cargar la clasificación del reto.';
+      },
+    });
+  }
+
+  cerrarDetalleReto(): void {
+    this.retoDetalle = null;
+    this.detalleRanking = null;
   }
 
   iniciarEditarReto(reto: Reto) {
