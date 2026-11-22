@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { ToastService } from '../../shared/services/toast.service';
+import { AuthService } from '../../core/services/auth.service';
 import { RrhhService, SitioConUbicacion } from '../../core/services/rrhh.service';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { RrhhMapaUbicacionComponent } from './rrhh-mapa-ubicacion.component';
@@ -13,8 +14,8 @@ export const RADIO_WEB_M = 100;
 
 /**
  * Ubicación de una agencia o de una bodega para validar las timbradas de su personal. En el formulario solo se ve un botón con el estado
- * (guardada o no); la ubicación se elige en un modal con el mapa de Google (o escribiendo las coordenadas) y se guarda en el servidor.
- * El mapa y el buscador solo se crean al abrir el modal, así no se cobran cargas de Google por abrir el formulario. Cada cambio queda en
+ * (guardada o no); la ubicación se elige en un modal con el mapa (o escribiendo las coordenadas) y se guarda en el servidor.
+ * El mapa y el buscador solo se crean al abrir el modal. Cada cambio queda en
  * la bitácora. Solo se muestra a quien puede configurar ubicaciones y con la agencia o bodega ya creada.
  */
 @Component({
@@ -49,7 +50,7 @@ export const RADIO_WEB_M = 100;
         </div>
       }
       <div modal-footer class="flex flex-wrap items-center justify-end gap-2">
-        @if (guardada) {
+        @if (guardada && puedeQuitar) {
           <button type="button" class="text-xs font-bold text-rose-700 hover:underline mr-auto" (click)="quitar()" [disabled]="guardando">Quitar ubicación</button>
         }
         <button type="button" class="btn btn-secondary" (click)="cerrar()">Cancelar</button>
@@ -63,6 +64,7 @@ export const RADIO_WEB_M = 100;
 export class RrhhUbicacionSitioComponent implements OnChanges {
   private readonly api = inject(RrhhService);
   private readonly toast = inject(ToastService);
+  private readonly auth = inject(AuthService);
 
   @Input({ required: true }) tipo!: 'AGENCIA' | 'BODEGA';
   @Input() sitioId: string | number | null = null;
@@ -76,6 +78,11 @@ export class RrhhUbicacionSitioComponent implements OnChanges {
   cargando = false;
   guardando = false;
   error = '';
+
+  /** Quitar la ubicación es una casilla aparte de configurarla, en Agencias o en Bodegas según el sitio. */
+  get puedeQuitar(): boolean {
+    return this.tipo === 'BODEGA' ? this.auth.puede('inventario.bodegas.ubicacion.quitar') : this.auth.puede('agencias.agencias.ubicacion.quitar');
+  }
 
   get sePuedeGuardar(): boolean {
     return this.lat !== null && this.lng !== null;

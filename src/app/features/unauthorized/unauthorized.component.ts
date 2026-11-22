@@ -48,10 +48,10 @@ import { ROLE_LABELS } from '../../core/models/roles.model';
             <i-lucide aria-hidden="true" name="arrow-left" class="w-4 h-4"></i-lucide>
             <span>Volver</span>
           </button>
-          <a routerLink="/dashboard"
+          <a [routerLink]="inicio"
             class="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-50 transition-colors flex items-center gap-2">
             <i-lucide aria-hidden="true" name="layout-dashboard" class="w-4 h-4"></i-lucide>
-            <span>Ir al Dashboard</span>
+            <span>Ir al inicio</span>
           </a>
         </div>
 
@@ -61,6 +61,8 @@ import { ROLE_LABELS } from '../../core/models/roles.model';
 })
 export class UnauthorizedComponent {
   private auth = inject(AuthService);
+  /** Primera pantalla a la que el rol sí tiene acceso (el dashboard no es de todos). */
+  readonly inicio = this.auth.rutaInicial();
   private router = inject(Router);
 
   get rolLabel(): string | null {

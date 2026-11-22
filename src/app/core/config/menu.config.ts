@@ -170,6 +170,13 @@ export const MENU_CONFIG: MenuItem[] = [
     moduloCodigo: 'rrhh/timbradas',
     group: 'RRHH'
   },
+  {
+    label: 'Dotaciones',
+    route: '/rrhh/dotaciones',
+    icon: 'package-check',
+    moduloCodigo: 'rrhh/dotaciones',
+    group: 'RRHH'
+  },
 
   // ─── 6. ADMINISTRACIÓN ─────────────────────────────────────────
   {

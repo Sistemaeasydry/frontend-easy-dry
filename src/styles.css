@@ -222,3 +222,11 @@
   box-shadow: 4px 0 6px -4px rgb(0 0 0 / 0.08);
 }
 .tabla-fija-desborda table thead tr > :first-child { z-index: 20; background-color: #f8fafc; }
+
+/* Mapa de ubicación (MapLibre): marcador propio y controles redondeados. */
+.maplibregl-map { font-family: inherit; }
+.marcador-ubicacion { cursor: grab; filter: drop-shadow(0 2px 3px rgba(15, 23, 42, 0.3)); }
+.marcador-ubicacion:active { cursor: grabbing; }
+.maplibregl-ctrl-group { border-radius: 12px !important; overflow: hidden; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18) !important; }
+.maplibregl-ctrl-group button { width: 34px !important; height: 34px !important; }
+.maplibregl-ctrl-attrib { font-size: 10px; border-radius: 10px 0 0 0 !important; }

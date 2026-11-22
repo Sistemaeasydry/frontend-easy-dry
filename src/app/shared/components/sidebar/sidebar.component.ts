@@ -70,7 +70,7 @@ interface MenuGroup {
         <div class="h-20 flex-shrink-0 border-b border-white/15 bg-easydry-blue-dark/60 relative flex items-center">
           <!-- Isotipo centrado: solo visible en modo mini sin vista previa -->
           <a
-            [routerLink]="['/dashboard']"
+            [routerLink]="[authService.rutaInicial()]"
             class="absolute left-0 top-0 bottom-0 w-[4.25rem] flex items-center justify-center transition-opacity duration-200 ease-out"
             [style.opacity]="showLabels() ? '0' : '0.92'"
             [class.pointer-events-none]="showLabels()"
@@ -81,7 +81,7 @@ interface MenuGroup {
           </a>
           <!-- Logo horizontal: visible en fijado-expandido, vista previa y cajón móvil -->
           <a
-            [routerLink]="['/dashboard']"
+            [routerLink]="[authService.rutaInicial()]"
             class="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center transition-opacity duration-200 ease-out"
             [style.opacity]="showLabels() ? '0.92' : '0'"
             [class.pointer-events-none]="!showLabels()"

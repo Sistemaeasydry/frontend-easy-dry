@@ -40,7 +40,7 @@ const mensajeDe = (e: unknown, defecto: string): string => {
             @else { Asigna tareas a las personas de tu alcance con título, descripción y archivos. Cuando las completan, tú las revisas. }
           </p>
         </div>
-        @if (pestana === 'asignadas' && puede('rrhh.tareas.asignar')) {
+        @if (pestana === 'asignadas' && puede('rrhh-tareas.asignadas.crear')) {
           <button type="button" class="btn btn-cta w-full sm:w-auto" (click)="abrirNueva()">
             <i-lucide name="plus" class="w-4 h-4" aria-hidden="true"></i-lucide> Nueva tarea
           </button>
@@ -130,11 +130,11 @@ const mensajeDe = (e: unknown, defecto: string): string => {
               @if (pestana === 'mias' && t.estado === 'PENDIENTE') {
                 <button type="button" class="btn btn-primary btn-sm" (click)="abrirCompletar(t)"><i-lucide name="check-circle" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Completar</button>
               }
-              @if (pestana === 'asignadas' && t.estado === 'COMPLETADA' && puedeGestionar(t)) {
+              @if (pestana === 'asignadas' && t.estado === 'COMPLETADA' && puedeGestionar(t) && puede('rrhh-tareas.asignadas.revisar')) {
                 <button type="button" class="btn btn-primary btn-sm" (click)="aprobar(t)"><i-lucide name="check-check" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Aprobar</button>
                 <button type="button" class="btn btn-secondary btn-sm" (click)="abrirDevolver(t)"><i-lucide name="rotate-ccw" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Devolver</button>
               }
-              @if (pestana === 'asignadas' && t.estado === 'PENDIENTE' && puedeGestionar(t) && !t.asignadoA.activo) {
+              @if (pestana === 'asignadas' && t.estado === 'PENDIENTE' && puedeGestionar(t) && !t.asignadoA.activo && puede('rrhh-tareas.asignadas.reasignar')) {
                 <button type="button" class="btn btn-primary btn-sm" (click)="abrirReasignar(t)"><i-lucide name="user-cog" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Reasignar</button>
               }
             </div>
@@ -301,8 +301,12 @@ const mensajeDe = (e: unknown, defecto: string): string => {
 
             @if (pestana === 'asignadas' && detalle.estado === 'PENDIENTE' && puedeGestionar(detalle)) {
               <div class="flex flex-wrap gap-2 justify-end">
-                <button type="button" class="btn btn-secondary btn-sm" (click)="abrirReasignar(detalle)"><i-lucide name="user-cog" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Reasignar</button>
-                <button type="button" class="btn btn-danger btn-sm" (click)="abrirCancelar(detalle)"><i-lucide name="ban" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Cancelar tarea</button>
+                @if (puede('rrhh-tareas.asignadas.reasignar')) {
+                  <button type="button" class="btn btn-secondary btn-sm" (click)="abrirReasignar(detalle)"><i-lucide name="user-cog" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Reasignar</button>
+                }
+                @if (puede('rrhh-tareas.asignadas.cancelar')) {
+                  <button type="button" class="btn btn-danger btn-sm" (click)="abrirCancelar(detalle)"><i-lucide name="ban" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Cancelar tarea</button>
+                }
               </div>
             }
           </div>

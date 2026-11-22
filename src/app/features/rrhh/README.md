@@ -28,8 +28,8 @@ Cada quien ve y asigna solo dentro de su alcance (agencia, región o país). Los
 | `core/services/rrhh.service.ts` | Cliente HTTP del backend (`/rrhh/...`) y sus tipos. |
 | `rrhh.modelos.ts` | Reglas puras de las pantallas: agrupar timbradas por día, tipos y límites de adjuntos. |
 | `rrhh-adjuntos.component.ts` | Selector de archivos que los **sube al almacenamiento** al elegirlos; en solo lectura muestra los guardados con URL firmada. |
-| `rrhh-ubicacion-sitio.component.ts` | Recuadro de ubicación y radio de una agencia o bodega (mapa de Google, guardado real y bitácora). |
-| `rrhh-mapa-ubicacion.component.ts` / `rrhh-google-maps.ts` | El mapa y el buscador de lugares. |
+| `rrhh-ubicacion-sitio.component.ts` | Recuadro de ubicación y radio de una agencia o bodega (mapa MapLibre, guardado real y bitácora). |
+| `rrhh-mapa-ubicacion.component.ts` | El mapa (MapLibre + OpenFreeMap) y el buscador de lugares (Nominatim). |
 | `rrhh.modelos.spec.ts` | Pruebas de las reglas. |
 
 ## 1. Tareas
@@ -60,14 +60,16 @@ Quien tiene `rrhh.ubicaciones.gestionar` ve el recuadro violeta **«Ubicación �
 - en el formulario de **editar una agencia** (Sucursales), y
 - en el formulario de **editar una bodega** (Inventario → Bodegas).
 
-Se elige el punto con el **buscador de lugares** o en el **mapa de Google** (clic o arrastrar el marcador), se escribe el **radio permitido** (30 a 500 m, 100 por defecto) y se pulsa «Guardar ubicación». Cada cambio queda en la bitácora con el valor anterior. Solo aparece con la agencia o bodega ya creada.
+Se elige el punto con el **buscador de lugares** o en el **mapa** (clic o arrastrar el marcador), se escribe el **radio permitido** (30 a 500 m, 100 por defecto) y se pulsa «Guardar ubicación». Cada cambio queda en la bitácora con el valor anterior. Solo aparece con la agencia o bodega ya creada.
 
-### Clave de Google Maps
+### Mapa y buscador (sin clave)
 
-El mapa usa la **Maps JavaScript API** y el buscador, la **Places API (New)**. La clave va en el `.env` del frontend (ignorado por git) como `NG_APP_GOOGLE_MAPS_KEY=AIza…`; `node scripts/sync-env.mjs` (lo corren `npm start` y `npm run dev`) la copia a `src/environments/environment.ts` como `googleMapsKey`.
+El mapa usa **MapLibre GL** con el mapa vectorial de **OpenFreeMap** (estilo `liberty`, cambiable en `ESTILO_MAPA`): gratis, sin clave y con uso comercial permitido. La librería se descarga solo al abrir el mapa.
 
-- Sin clave, el recuadro avisa «Falta la clave de Google Maps» y deja escribir las coordenadas a mano.
-- Para producción, ponla en `.env.production` o en la variable `NG_APP_GOOGLE_MAPS_KEY` del CI, y restríngela por dominio en Google Cloud.
+- Mientras se escribe (pausa de 400 ms, mínimo 3 letras) salen sugerencias de **Photon** (`photon.komoot.io`, hecho para eso). Al pulsar Enter o «Buscar» se consulta **Nominatim**, que no permite buscar mientras se escribe y pide una consulta por segundo como máximo.
+- El worker de MapLibre (`maplibre-gl-worker.mjs`) se copia a `assets/maplibre` desde `angular.json` y se indica con `setWorkerUrl`: sin eso el mapa falla con «Worker failed to load» al estar empaquetado.
+- Necesita WebGL en el navegador; si no, el recuadro avisa y se escriben la latitud y la longitud a mano.
+- En producción la Content-Security-Policy (`render.yaml`) permite `tiles.openfreemap.org`, `nominatim.openstreetmap.org`, `photon.komoot.io` y los workers `blob:` que usa MapLibre.
 
 ## Archivos y archivado
 

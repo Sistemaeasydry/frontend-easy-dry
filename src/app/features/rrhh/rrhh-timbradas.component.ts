@@ -184,8 +184,10 @@ const aDia = (d: Date): string => {
                 <input type="checkbox" [(ngModel)]="soloNovedades"> Solo con novedades
               </label>
               <button type="button" class="btn btn-primary" (click)="cargarEquipo()" [disabled]="cargandoEquipo">{{ cargandoEquipo ? 'Cargando…' : 'Consultar' }}</button>
-              <button type="button" class="btn btn-secondary" (click)="exportar('excel')" [disabled]="!filasEquipo.length"><i-lucide name="download" class="w-4 h-4" aria-hidden="true"></i-lucide> Excel</button>
-              <button type="button" class="btn btn-secondary" (click)="exportar('pdf')" [disabled]="!filasEquipo.length"><i-lucide name="download" class="w-4 h-4" aria-hidden="true"></i-lucide> PDF</button>
+              @if (puedeExportar) {
+                <button type="button" class="btn btn-secondary" (click)="exportar('excel')" [disabled]="!filasEquipo.length"><i-lucide name="download" class="w-4 h-4" aria-hidden="true"></i-lucide> Excel</button>
+                <button type="button" class="btn btn-secondary" (click)="exportar('pdf')" [disabled]="!filasEquipo.length"><i-lucide name="download" class="w-4 h-4" aria-hidden="true"></i-lucide> PDF</button>
+              }
             </div>
           </div>
           <div class="overflow-x-auto">
@@ -307,6 +309,8 @@ export class RrhhTimbradasComponent implements OnInit, OnDestroy {
   etiqueta(e: EvaluacionDiaApi['estado']) { return ETIQUETA_ESTADO_DIA[e]; }
   minutos(m: number | null): string { return textoMinutos(m, this.ajuste?.toleranciaMin ?? 10); }
   observaciones(d: FilaDia): string { return d.observaciones.map((o) => ETIQUETA_ESTADO_DIA[o].nombre).join(' · '); }
+
+  get puedeExportar(): boolean { return this.auth.puede('rrhh-timbradas.equipo.exportar'); }
 
   exportar(formato: 'excel' | 'pdf'): void {
     const filas = this.filasEquipo;

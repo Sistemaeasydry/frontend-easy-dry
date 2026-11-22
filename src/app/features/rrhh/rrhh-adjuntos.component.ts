@@ -36,7 +36,7 @@ export interface AdjuntoElegido {
             <i-lucide name="paperclip" class="w-4 h-4" aria-hidden="true"></i-lucide> Adjuntar archivos
             <input type="file" class="sr-only" multiple [accept]="acepta" [disabled]="elegidos.length >= max" (change)="elegir($event)" [attr.aria-label]="etiqueta">
           </label>
-          <span class="text-[11px] text-slate-500">JPG, PNG, WEBP, MP4, MOV o PDF · hasta {{ max }} archivos de {{ maxMb }} MB · {{ elegidos.length }}/{{ max }}</span>
+          <span class="text-[11px] text-slate-500">{{ soloFotosTipo ? 'JPG, PNG o WEBP' : 'JPG, PNG, WEBP, MP4, MOV o PDF' }} · hasta {{ max }} archivos de {{ maxMb }} MB · {{ elegidos.length }}/{{ max }}</span>
         </div>
         @if (elegidos.length) {
           <ul class="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -101,13 +101,17 @@ export class RrhhAdjuntosComponent implements OnChanges {
   @Input() guardados: AdjuntoTareaApi[] = [];
   @Input() editable = true;
   @Input() etiqueta = 'Adjuntar archivos';
+  /** Con valor, todo se sube con ese tipo (p. ej. FOTO_DOTACION) y solo se aceptan fotos. */
+  @Input() soloFotosTipo: 'FOTO_DOTACION' | null = null;
+  /** Máximo de archivos (por defecto el de las tareas). */
+  @Input() maximo = MAX_ADJUNTOS;
   @Output() elegidosChange = new EventEmitter<AdjuntoElegido[]>();
   /** true mientras algún archivo se está subiendo: quien usa el componente no debe enviar el formulario. */
   @Output() ocupadoChange = new EventEmitter<boolean>();
 
-  readonly max = MAX_ADJUNTOS;
+  get max(): number { return this.maximo; }
   readonly maxMb = MAX_ADJUNTO_BYTES / 1024 / 1024;
-  readonly acepta = ACEPTA_ADJUNTOS;
+  get acepta(): string { return this.soloFotosTipo ? 'image/jpeg,image/png,image/webp' : ACEPTA_ADJUNTOS; }
   urls: Record<string, string> = {};
   fallos: Record<string, boolean> = {};
 
@@ -130,7 +134,11 @@ export class RrhhAdjuntosComponent implements OnChanges {
     const archivos = Array.from(input.files ?? []);
     input.value = '';
     for (const archivo of archivos) {
-      const motivo = motivoAdjuntoInvalido(archivo, this.elegidos.length);
+      const motivo = this.elegidos.length >= this.max
+        ? `Máximo ${this.max} archivos.`
+        : this.soloFotosTipo && !archivo.type.startsWith('image/')
+          ? 'Solo se aceptan fotos (JPG, PNG o WEBP).'
+          : motivoAdjuntoInvalido(archivo, 0);
       if (motivo) {
         this.toast.warning('No se agregó el archivo', `${archivo.name}: ${motivo}`);
         continue;
@@ -153,7 +161,7 @@ export class RrhhAdjuntosComponent implements OnChanges {
     try {
       adjunto.remoto = await this.almacenamiento.uploadMedia(archivo, {
         category: 'RRHH',
-        type: tipoEvidenciaDe(archivo.type),
+        type: this.soloFotosTipo ?? tipoEvidenciaDe(archivo.type),
         fileName: archivo.name,
         contentType: archivo.type,
       });
