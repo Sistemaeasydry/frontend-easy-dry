@@ -106,3 +106,18 @@ export function placasEquivalentes(a: string, b: string): boolean {
   const pb = formatearPlaca(b);
   return pa.length > 0 && pa === pb;
 }
+
+/** Máximo de caracteres del VIN (número de chasis) o de la placa guardada. */
+export const LONGITUD_MAX_VIN = 20;
+
+/** VIN: solo letras y números, en mayúsculas, hasta 20 caracteres. */
+export function formatearVin(valor: string): string {
+  return (valor || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, LONGITUD_MAX_VIN);
+}
+
+export function validarVin(valor: string): ResultadoPlaca {
+  const placa = formatearVin(valor);
+  if (!placa) return { placa: '', valida: false, tipo: 'INVALIDA', mensaje: 'Ingrese el VIN del vehículo (hasta 20 caracteres).' };
+  if (placa.length < 5) return { placa, valida: false, tipo: 'INVALIDA', mensaje: 'El VIN es muy corto.' };
+  return { placa, valida: true, tipo: 'PARTICULAR', mensaje: `VIN · ${placa.length}/${LONGITUD_MAX_VIN} caracteres` };
+}

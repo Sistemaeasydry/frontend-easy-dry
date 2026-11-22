@@ -38,7 +38,7 @@ import { BUSQUEDA_DEBOUNCE_MS, BUSQUEDA_MIN_CARACTERES, PAGE_SIZE_INFINITO, PAGE
 import { FilterBarComponent, FilterState } from '../../shared/components/filter-bar/filter-bar.component';
 import { MaquinariaService } from '../../core/services/maquinaria.service';
 import { IncidenteService } from '../../core/services/incidente.service';
-import { formatearPlaca, validarPlaca } from '../../core/utils/placa.util';
+import { formatearPlaca, validarPlaca, formatearVin, validarVin } from '../../core/utils/placa.util';
 import { resolverRangoFechas, soloFecha } from '../../core/utils/fecha-rango';
 
 import { RouterModule } from '@angular/router';
@@ -47,6 +47,7 @@ import { EvidenciaSelectorComponent } from '../../shared/components/evidencia-se
 import { FotoOpcionalComponent } from '../../shared/components/foto-opcional/foto-opcional.component';
 import { EvidenciaServicioItem, EvidenciasServicioModalComponent, FaseEvidencia, evidenciasDeServicio } from '../../shared/components/evidencias-servicio-modal/evidencias-servicio-modal.component';
 
+import { nombreCompleto } from '../../core/utils/nombre-persona';
 @Component({
   selector: 'app-servicios',
   standalone: true,
@@ -183,6 +184,17 @@ import { EvidenciaServicioItem, EvidenciasServicioModalComponent, FaseEvidencia,
         [listaEstados]="tabActiva === 'generales' ? ['Todos', 'En Proceso', 'Por Aprobar', 'Realizados / Aprobados', 'Rechazados'] : ['Todos', 'Pendiente', 'En Proceso', 'Pausado', 'Completado', 'Cancelado']"
         (filterChange)="aplicarNuevosFiltros($event)">
       </app-filter-bar>
+      @if (tabActiva === 'especiales') {
+        <label class="-mt-3 px-2 text-xs font-bold text-slate-600 flex items-center gap-2">
+          <span>Ticket</span>
+          <select [(ngModel)]="filtroTicketExtras" (ngModelChange)="onFiltroTicketExtrasChange()" name="filtroTicketExtras" aria-label="Filtrar servicios especiales por ticket"
+            class="bg-white border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-1.5 font-semibold cursor-pointer focus:ring-2 focus:ring-easydry-blue">
+            <option value="TODOS">Todos</option>
+            <option value="CON">Con ticket</option>
+            <option value="SIN">Sin ticket</option>
+          </select>
+        </label>
+      }
       @if (busquedaCorta) {
         <p class="-mt-3 px-2 text-[11px] font-semibold text-slate-500" role="status">Escribe al menos {{ minBusqueda }} letras para buscar.</p>
       }
@@ -537,6 +549,9 @@ import { EvidenciaServicioItem, EvidenciasServicioModalComponent, FaseEvidencia,
                                 <div class="font-extrabold text-slate-900 text-xs">{{ extra.vehiculoInfo?.marca }} {{ extra.vehiculoInfo?.modelo }}</div>
                                 <div class="text-xs font-mono font-extrabold text-easydry-blue">{{ extra.vehiculoInfo?.placa || extra.placa }}</div>
                                 <div class="text-xs text-slate-500 font-semibold">{{ extra.vehiculoInfo?.color }}</div>
+                                @if (extra.ticket) {
+                                  <span class="text-xs font-mono font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 mt-0.5 inline-block" title="Ticket del servicio">Ticket: {{ extra.ticket }}</span>
+                                }
           </ng-template>
 
           <ng-template appCell="servicio" let-extra>
@@ -1231,7 +1246,7 @@ import { EvidenciaServicioItem, EvidenciasServicioModalComponent, FaseEvidencia,
                     (change)="cambiarPulidorReasignacion(p, $event)"
                     class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                   <div class="min-w-0 flex-1">
-                    <p class="font-semibold text-slate-700 break-words">{{ p.name }} {{ p.lastname }}</p>
+                    <p class="font-semibold text-slate-700 break-words">{{ nombreCompleto(p) }}</p>
                     @if (esResponsableReasignacion(p.id)) {
                       <p class="text-[11px] font-bold text-amber-800 mt-0.5">{{ esPulidorFijoReasignacion(p) ? 'Fijo · Responsable principal' : 'Responsable · se descuenta de su kit' }}</p>
                       @if (esPulidorFijoReasignacion(p)) { <p class="text-[11px] text-slate-500">No se puede cambiar; se descuenta de su kit</p> }
@@ -1410,14 +1425,24 @@ import { EvidenciaServicioItem, EvidenciasServicioModalComponent, FaseEvidencia,
                 class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-easydry-blue focus:border-easydry-blue focus:ring-easydry-blue disabled:bg-violet-50 disabled:border-violet-200 disabled:text-violet-800 disabled:opacity-90" required>
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Placa Vehículo *</label>
-              <input aria-label="PBX-1234"
+              <div class="flex items-center justify-between mb-1">
+                <span class="block text-xs font-bold text-slate-700 uppercase tracking-wider">{{ identificacionTipo === 'VIN' ? 'VIN Vehículo *' : 'Placa Vehículo *' }}</span>
+                @if (!agregarServicioOTFuente) {
+                  <div class="inline-flex rounded-lg border border-slate-200 overflow-hidden text-[11px] font-bold" role="group" aria-label="Identificar el vehículo por placa o por VIN">
+                    <button type="button" (click)="cambiarIdentificacion('PLACA')" [attr.aria-pressed]="identificacionTipo === 'PLACA'"
+                      class="px-2.5 py-1 cursor-pointer" [ngClass]="identificacionTipo === 'PLACA' ? 'bg-easydry-blue text-white' : 'bg-white text-slate-600'">Placa</button>
+                    <button type="button" (click)="cambiarIdentificacion('VIN')" [attr.aria-pressed]="identificacionTipo === 'VIN'"
+                      class="px-2.5 py-1 cursor-pointer" [ngClass]="identificacionTipo === 'VIN' ? 'bg-easydry-blue text-white' : 'bg-white text-slate-600'">VIN</button>
+                  </div>
+                }
+              </div>
+              <input [attr.aria-label]="identificacionTipo === 'VIN' ? 'VIN del vehículo' : 'Placa del vehículo'"
                 type="text"
                 [ngModel]="nuevoRegistro.placa"
                 (ngModelChange)="agregarServicioOTFuente ? null : onPlacaChange($event)"
                 name="placa"
-                placeholder="PBX-1234"
-                maxlength="8"
+                [placeholder]="identificacionTipo === 'VIN' ? '9BWZZZ377VT004251' : 'PBX-1234'"
+                [attr.maxlength]="identificacionTipo === 'VIN' ? 20 : 8"
                 autocomplete="off"
                 [disabled]="!!agregarServicioOTFuente"
                 class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold uppercase tracking-wide focus:border-easydry-blue focus:ring-easydry-blue disabled:bg-violet-50 disabled:border-violet-200 disabled:text-violet-800 disabled:opacity-90"
@@ -2405,7 +2430,7 @@ import { EvidenciaServicioItem, EvidenciasServicioModalComponent, FaseEvidencia,
                           <input type="checkbox" [name]="'operadorExtra-' + p.id" [checked]="estaPulidorSeleccionado(p.id)"
                             [disabled]="esPulidorFijoAsignado(p)" (change)="onOperadorExtraToggle(p, $event)"
                             class="rounded border-slate-300 text-blue-700 focus:ring-blue-600">
-                          <span class="min-w-0 flex-1 text-xs font-semibold text-slate-800">{{ p.name }} {{ p.lastname }}</span>
+                          <span class="min-w-0 flex-1 text-xs font-semibold text-slate-800">{{ nombreCompleto(p) }}</span>
                           <span class="text-xs text-slate-500">{{ p.agenciaId || p.agencia?.id ? 'Fijo' : 'Móvil' }}</span>
                         </label>
                       }
@@ -2428,7 +2453,7 @@ import { EvidenciaServicioItem, EvidenciasServicioModalComponent, FaseEvidencia,
                           [disabled]="esPulidorFijoAsignado(p)" (change)="onOperadorExtraToggle(p, $event)"
                           class="rounded border-slate-300 text-blue-700 focus:ring-blue-600">
                         <div class="min-w-0 flex-1">
-                          <p class="text-xs font-semibold text-slate-800 break-words">{{ p.name }} {{ p.lastname }}</p>
+                          <p class="text-xs font-semibold text-slate-800 break-words">{{ nombreCompleto(p) }}</p>
                           @if (esPulidorFijoAsignado(p)) {
                             <p class="text-[11px] font-bold text-emerald-700 mt-0.5">Fijo · Responsable principal</p>
                             <p class="text-[11px] text-slate-500">No se puede cambiar; se descuenta de su kit</p>
@@ -2473,14 +2498,22 @@ import { EvidenciaServicioItem, EvidenciasServicioModalComponent, FaseEvidencia,
                 required>
             </div>
             <div>
-              <label for="srv-f18" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Placa Vehículo *</label>
+              <div class="flex items-center justify-between mb-1">
+                <label for="srv-f18" class="block text-xs font-bold text-slate-700 uppercase tracking-wider">{{ extraIdentificacionTipo === 'VIN' ? 'VIN Vehículo *' : 'Placa Vehículo *' }}</label>
+                <div class="inline-flex rounded-lg border border-slate-200 overflow-hidden text-[11px] font-bold" role="group" aria-label="Identificar el vehículo por placa o por VIN">
+                  <button type="button" (click)="cambiarExtraIdentificacion('PLACA')" [attr.aria-pressed]="extraIdentificacionTipo === 'PLACA'"
+                    class="px-2.5 py-1 cursor-pointer" [ngClass]="extraIdentificacionTipo === 'PLACA' ? 'bg-amber-600 text-white' : 'bg-white text-slate-600'">Placa</button>
+                  <button type="button" (click)="cambiarExtraIdentificacion('VIN')" [attr.aria-pressed]="extraIdentificacionTipo === 'VIN'"
+                    class="px-2.5 py-1 cursor-pointer" [ngClass]="extraIdentificacionTipo === 'VIN' ? 'bg-amber-600 text-white' : 'bg-white text-slate-600'">VIN</button>
+                </div>
+              </div>
               <input id="srv-f18"
                 type="text"
                 [ngModel]="extraFormPlaca"
                 (ngModelChange)="onExtraPlacaChange($event)"
                 name="extraPlaca"
-                placeholder="PBX-1234"
-                maxlength="8"
+                [placeholder]="extraIdentificacionTipo === 'VIN' ? '9BWZZZ377VT004251' : 'PBX-1234'"
+                [attr.maxlength]="extraIdentificacionTipo === 'VIN' ? 20 : 8"
                 autocomplete="off"
                 class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold uppercase tracking-wide focus:border-amber-500 focus:ring-amber-500"
                 [class.border-rose-400]="extraPlacaTocada && !extraPlacaValida"
@@ -2493,6 +2526,23 @@ import { EvidenciaServicioItem, EvidenciasServicioModalComponent, FaseEvidencia,
                 {{ extraPlacaMensaje }}
               </p>
             </div>
+          </div>
+
+          <!-- Ticket (opcional): se marca si el servicio es por ticket y se ingresa su número o código -->
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+            <label class="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+              <input type="checkbox" [(ngModel)]="extraConTicket" name="extraConTicket" (ngModelChange)="onExtraConTicketChange($event)" class="rounded border-slate-300 text-amber-600 focus:ring-amber-500">
+              <span>El servicio es por ticket</span>
+            </label>
+            @if (extraConTicket) {
+              <div>
+                <label for="srv-ticket" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Ticket *</label>
+                <input id="srv-ticket" type="text" [ngModel]="extraFormTicket" (ngModelChange)="onExtraTicketChange($event)" name="extraTicket"
+                  maxlength="10" autocomplete="off" placeholder="TK2045"
+                  class="w-full md:w-1/2 p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold uppercase tracking-wide focus:border-amber-500 focus:ring-amber-500">
+                <p class="text-xs mt-1 font-semibold text-slate-400">Letras o números, máximo 10 caracteres.</p>
+              </div>
+            }
           </div>
 
           <!-- Datos del Vehículo -->
@@ -2744,6 +2794,7 @@ import { EvidenciaServicioItem, EvidenciasServicioModalComponent, FaseEvidencia,
   `
 })
 export class ServiciosComponent implements OnInit, OnDestroy {
+  readonly nombreCompleto = nombreCompleto;
   // ── Pestaña Activa: Servicios Generales vs Servicios Especiales ──
   tabActiva: 'generales' | 'especiales' = 'generales';
 
@@ -2785,8 +2836,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
     this.nuevoRegistro.categoriaServicio = 'GENERAL';
     const user = this.authService.getCurrentUser();
     if (user) {
-      const nombreCompleto = `${user.nombre} ${user.apellido}`.trim();
-      this.nuevoRegistro.empleado = nombreCompleto;
+      this.nuevoRegistro.empleado = nombreCompleto(user);
       if (user.sucursalNombre) this.nuevoRegistro.agencia = user.sucursalNombre;
       if (user.bahiaNombre) this.nuevoRegistro.bahia = user.bahiaNombre;
     }
@@ -2796,6 +2846,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
     // La OT la escribe siempre el usuario: el campo queda vacío al abrir el modal.
     this.nuevoRegistro.ordenTrabajoOT = '';
     this.nuevoRegistro.placa = '';
+    this.identificacionTipo = 'PLACA';
     this.nuevoRegistro.marca = '';
     this.nuevoRegistro.modelo = '';
     this.nuevoRegistro.color = '';
@@ -2835,7 +2886,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
     if (item.empleado) {
       this.nuevoRegistro.empleado = item.empleado;
     } else if (user) {
-      this.nuevoRegistro.empleado = `${user.nombre} ${user.apellido}`.trim();
+      this.nuevoRegistro.empleado = nombreCompleto(user);
     }
 
     // Preservar datos del vehículo original
@@ -3254,6 +3305,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
       regionId: region || alcance.regionId,
       operadorId: alcance.operadorId || operador || undefined,
       tipoServicio: tipo || undefined,
+      ticket: this.filtroTicketExtras === 'TODOS' ? undefined : this.filtroTicketExtras,
       ...this.rangoFechasIso(),
     };
   }
@@ -3535,8 +3587,41 @@ export class ServiciosComponent implements OnInit, OnDestroy {
     return estado === 'EN PROCESO' || estado === 'EN_PROCESO' || estado === 'FINALIZADO';
   }
 
+  /** Cómo se identifica el vehículo al crear la OT: por placa (formato ANT) o por VIN (hasta 20 caracteres). */
+  identificacionTipo: 'PLACA' | 'VIN' = 'PLACA';
+  extraIdentificacionTipo: 'PLACA' | 'VIN' = 'PLACA';
+  extraConTicket = false;
+  extraFormTicket = '';
+  filtroTicketExtras: 'TODOS' | 'CON' | 'SIN' = 'TODOS';
+
+  cambiarIdentificacion(tipo: 'PLACA' | 'VIN'): void {
+    if (this.identificacionTipo === tipo) return;
+    this.identificacionTipo = tipo;
+    this.nuevoRegistro.placa = '';
+    this.placaTocada = false;
+  }
+
+  cambiarExtraIdentificacion(tipo: 'PLACA' | 'VIN'): void {
+    if (this.extraIdentificacionTipo === tipo) return;
+    this.extraIdentificacionTipo = tipo;
+    this.extraFormPlaca = '';
+    this.extraPlacaTocada = false;
+  }
+
+  onExtraConTicketChange(activo: boolean): void {
+    if (!activo) this.extraFormTicket = '';
+  }
+
+  onExtraTicketChange(valor: string): void {
+    this.extraFormTicket = (valor || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+  }
+
+  onFiltroTicketExtrasChange(): void {
+    this.aplicarFiltros();
+  }
+
   get resultadoPlaca() {
-    return validarPlaca(this.nuevoRegistro.placa);
+    return this.identificacionTipo === 'VIN' ? validarVin(this.nuevoRegistro.placa) : validarPlaca(this.nuevoRegistro.placa);
   }
 
   get placaValida(): boolean {
@@ -3545,7 +3630,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
 
   get placaMensaje(): string {
     if (!this.nuevoRegistro.placa) {
-      return 'Formato ANT Ecuador: AAA-1234 (auto) o AAA-123 (moto).';
+      return this.identificacionTipo === 'VIN' ? 'VIN: letras y números, hasta 20 caracteres.' : 'Formato ANT Ecuador: AAA-1234 (auto) o AAA-123 (moto).';
     }
     return this.resultadoPlaca.mensaje;
   }
@@ -3553,19 +3638,23 @@ export class ServiciosComponent implements OnInit, OnDestroy {
   /** Placa de la OT especial: mismo formato y validación ANT Ecuador que la de servicios generales. */
   extraPlacaTocada = false;
   get extraPlacaValida(): boolean {
-    return validarPlaca(this.extraFormPlaca).valida;
+    return this.validarIdentificacionExtra().valida;
+  }
+  private validarIdentificacionExtra() {
+    return this.extraIdentificacionTipo === 'VIN' ? validarVin(this.extraFormPlaca) : validarPlaca(this.extraFormPlaca);
   }
   get extraPlacaMensaje(): string {
-    return this.extraFormPlaca ? validarPlaca(this.extraFormPlaca).mensaje : 'Formato ANT Ecuador: AAA-1234 (auto) o AAA-123 (moto).';
+    if (this.extraFormPlaca) return this.validarIdentificacionExtra().mensaje;
+    return this.extraIdentificacionTipo === 'VIN' ? 'VIN: letras y números, hasta 20 caracteres.' : 'Formato ANT Ecuador: AAA-1234 (auto) o AAA-123 (moto).';
   }
   onExtraPlacaChange(valor: string): void {
     this.extraPlacaTocada = true;
-    this.extraFormPlaca = formatearPlaca(valor);
+    this.extraFormPlaca = this.extraIdentificacionTipo === 'VIN' ? formatearVin(valor) : formatearPlaca(valor);
   }
 
   onPlacaChange(valor: string): void {
     this.placaTocada = true;
-    this.nuevoRegistro.placa = formatearPlaca(valor);
+    this.nuevoRegistro.placa = this.identificacionTipo === 'VIN' ? formatearVin(valor) : formatearPlaca(valor);
   }
 
   /**
@@ -3807,7 +3896,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
   get yoId(): string { return String(this.authService.getCurrentUser()?.id ?? ''); }
   get miNombreCompleto(): string {
     const u = this.authService.getCurrentUser();
-    return `${u?.nombre || ''} ${u?.apellido || ''}`.trim();
+    return nombreCompleto(u);
   }
   /** Pulidores que se pueden elegir además de uno mismo (el modo «Para mí» ya incluye al creador). */
   get pulidoresSeleccionables(): any[] {
@@ -4123,8 +4212,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
 
     // Pre-rellenar el formulario de nueva OT con el contexto del usuario autenticado
     if (user) {
-      const nombreCompleto = `${user.nombre} ${user.apellido}`;
-      this.nuevoRegistro.empleado = nombreCompleto;
+      this.nuevoRegistro.empleado = nombreCompleto(user);
       if (user.sucursalNombre) this.nuevoRegistro.agencia = user.sucursalNombre;
       if (user.bahiaNombre) this.nuevoRegistro.bahia = user.bahiaNombre;
     }
@@ -4681,7 +4769,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
     const operadorId = this.extraForm.operadoresIds[0] || '';
     const operador = this.pulidoresDisponiblesRegion.find((p) => String(p.id) === operadorId);
     this.extraForm.operadorId = operadorId;
-    this.extraForm.operadorNombre = operador ? `${operador.name} ${operador.lastname}`.trim() : operadorId === this.yoId ? this.miNombreCompleto : '';
+    this.extraForm.operadorNombre = operador ? nombreCompleto(operador) : operadorId === this.yoId ? this.miNombreCompleto : '';
     if (operadorId) {
       this.cargarStockPulidorParaOT(operadorId);
     } else {
@@ -4750,9 +4838,9 @@ export class ServiciosComponent implements OnInit, OnDestroy {
 
   async guardarHojaServicio() {
     this.placaTocada = true;
-    const resultado = validarPlaca(this.nuevoRegistro.placa);
+    const resultado = this.identificacionTipo === 'VIN' ? validarVin(this.nuevoRegistro.placa) : validarPlaca(this.nuevoRegistro.placa);
     if (!resultado.valida) {
-      this.toastService.warning('Placa inválida', resultado.mensaje);
+      this.toastService.warning(this.identificacionTipo === 'VIN' ? 'VIN inválido' : 'Placa inválida', resultado.mensaje);
       return;
     }
     this.nuevoRegistro.placa = resultado.placa;
@@ -5281,7 +5369,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
     return this.reasignarOperadoresIds
       .map((id) => this.pulidoresReasignables.find((p) => String(p.id) === id))
       .filter(Boolean)
-      .map((p) => `${p.name} ${p.lastname}`.trim())
+      .map((p) => nombreCompleto(p))
       .join(', ');
   }
 
@@ -5568,6 +5656,9 @@ export class ServiciosComponent implements OnInit, OnDestroy {
 
     this.extraFormOT = '';
     this.extraFormPlaca = '';
+    this.extraIdentificacionTipo = 'PLACA';
+    this.extraConTicket = false;
+    this.extraFormTicket = '';
     this.extraPlacaTocada = false;
     this.extraFormMarca = '';
     this.extraFormModelo = '';
@@ -5598,14 +5689,14 @@ export class ServiciosComponent implements OnInit, OnDestroy {
     let opNombre = '';
     if (this.isPulidor) {
       opId = String(user?.id || '');
-      opNombre = `${user?.nombre || ''} ${user?.apellido || ''}`.trim();
+      opNombre = nombreCompleto(user);
     } else {
       const fijo = this.pulidoresDisponiblesRegion.find(p => String(p.agenciaId || p.agencia?.id) === String(this.extraFormAgenciaId));
       const movil = this.pulidoresDisponiblesRegion.find(p => !p.agenciaId && !p.agencia?.id);
       const primerPulidor = fijo || movil || this.pulidoresDisponiblesRegion[0];
       if (primerPulidor) {
         opId = String(primerPulidor.id);
-        opNombre = `${primerPulidor.name || ''} ${primerPulidor.lastname}`.trim();
+        opNombre = nombreCompleto(primerPulidor);
       }
     }
 
@@ -5670,13 +5761,17 @@ export class ServiciosComponent implements OnInit, OnDestroy {
       this.toastService.warning('Placa requerida', 'Ingrese la placa del vehículo.');
       return;
     }
-    const placaExtra = validarPlaca(this.extraFormPlaca);
+    const placaExtra = this.validarIdentificacionExtra();
     if (!placaExtra.valida) {
       this.extraPlacaTocada = true;
-      this.toastService.warning('Placa inválida', placaExtra.mensaje);
+      this.toastService.warning(this.extraIdentificacionTipo === 'VIN' ? 'VIN inválido' : 'Placa inválida', placaExtra.mensaje);
       return;
     }
     this.extraFormPlaca = placaExtra.placa;
+    if (this.extraConTicket && !this.extraFormTicket.trim()) {
+      this.toastService.warning('Ticket requerido', 'Marcaste que el servicio es por ticket: ingresa su número o código.');
+      return;
+    }
 
     const user = this.authService.getCurrentUser();
     const agenciaIdFinal = this.isPulidorFijo ? (user?.agenciaId || '') : this.extraFormAgenciaId;
@@ -5725,6 +5820,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
     const payload: any = {
       codigoSE: otUpper,
       ordenTrabajoOT: otUpper,
+      ticket: this.extraConTicket ? this.extraFormTicket.trim().toUpperCase() : undefined,
       servicioNombre: this.extraForm.servicioNombre.trim(),
       tipoServicio: this.extraForm.servicioNombre.trim(),
       servicioCatalogoId: this.servicioEspecialCatalogo?.id,
@@ -5766,7 +5862,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
       estado: this.extraForm.estado,
       fechaProgramada: this.extraForm.fechaProgramada,
       notas: this.extraForm.notas,
-      creadoPor: `${user?.nombre || ''} ${user?.apellido || ''}`.trim()
+      creadoPor: nombreCompleto(user)
     };
 
     this.extrasService.crearServicioExtra(payload).subscribe({

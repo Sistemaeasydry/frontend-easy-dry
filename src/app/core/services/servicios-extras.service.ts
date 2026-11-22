@@ -7,6 +7,7 @@ import { apiUrl } from '../config/env';
 import { OrdenDir, PaginaServidor, normalizarPagina } from '../models/paginacion.model';
 import { PAGE_SIZE_MAX } from '../config/paginacion';
 
+import { nombreCompleto } from '../utils/nombre-persona';
 /** Consulta paginada de servicios especiales (orden, búsqueda y filtros en el servidor). */
 export interface ConsultaExtras {
   page?: number;
@@ -25,6 +26,8 @@ export interface ConsultaExtras {
   /** ISO 8601 (fin del día local) */
   fechaHasta?: string;
   incluirResumen?: boolean;
+  /** CON = solo los que tienen ticket, SIN = solo los que no. */
+  ticket?: 'CON' | 'SIN';
 }
 
 export interface RespuestaExtrasPagina {
@@ -56,12 +59,13 @@ export class ServiciosExtrasService {
       id: item.id,
       codigoSE: item.codigoSE || `SE-${String(item.id).substring(0, 6).toUpperCase()}`,
       ordenTrabajoOT: item.ordenTrabajoOT || item.codigoSE || '',
+      ticket: item.ticket || null,
       precio: item.precio != null ? Number(item.precio) : null,
       servicioCatalogoId: item.servicioCatalogoId != null ? Number(item.servicioCatalogoId) : null,
       servicioNombre: item.tipoServicio || item.servicioNombre || 'Servicio Especial',
       servicioDescripcion: item.observaciones || item.servicioDescripcion || '',
       operadorId: item.operadorId || item.operadoresIds?.[0] || item.operador?.id || '',
-      operadorNombre: item.operadorNombre || (item.operador ? `${item.operador.name || ''} ${item.operador.lastname || ''}`.trim() : 'Sin asignar'),
+      operadorNombre: item.operadorNombre || (item.operador ? nombreCompleto(item.operador) : 'Sin asignar'),
       operadoresIds: Array.isArray(item.operadoresIds)
         ? item.operadoresIds.map((id: string | number) => String(id))
         : item.operadorId || item.operador?.id
@@ -151,7 +155,7 @@ export class ServiciosExtrasService {
     if (c.sortField) { body['sortField'] = c.sortField; body['sortOrder'] = c.sortOrder || 'desc'; }
     const texto = (c.search || '').trim();
     if (texto.length >= 2) body['search'] = texto;
-    const claves: (keyof ConsultaExtras)[] = ['estado', 'agenciaId', 'regionId', 'operadorId', 'tipoServicio', 'fechaDesde', 'fechaHasta'];
+    const claves: (keyof ConsultaExtras)[] = ['estado', 'agenciaId', 'regionId', 'operadorId', 'tipoServicio', 'fechaDesde', 'fechaHasta', 'ticket'];
     for (const k of claves) {
       const v = c[k];
       if (v !== undefined && v !== null && v !== '') body[k] = v;
@@ -202,6 +206,7 @@ export class ServiciosExtrasService {
     const payload = {
       codigoSE: rawOT || undefined,
       ordenTrabajoOT: rawOT || undefined,
+      ticket: (data.ticket || '').trim().toUpperCase() || undefined,
       tipoServicio: servNombre,
       observaciones: data.notas || data.servicioDescripcion || '',
       operadorId: data.operadorId ? String(data.operadorId) : undefined,
