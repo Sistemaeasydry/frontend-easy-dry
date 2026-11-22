@@ -45,6 +45,7 @@ import { InfiniteScrollComponent } from '../../shared/components/infinite-scroll
 import { StockUbicacionInsumosComponent } from './stock-ubicacion-insumos/stock-ubicacion-insumos.component';
 import { DespachoMasivoModalComponent } from './despacho-masivo/despacho-masivo-modal.component';
 
+import { nombreCompleto } from '../../core/utils/nombre-persona';
 @Component({
   selector: 'app-inventario',
   standalone: true,
@@ -1106,7 +1107,7 @@ import { DespachoMasivoModalComponent } from './despacho-masivo/despacho-masivo-
               <div class="min-w-0 flex-1">
                 <div class="flex items-center justify-between gap-1">
                   <h4 class="text-xs font-extrabold text-slate-900 truncate">
-                    {{ asis.nombre }} {{ asis.apellido }}
+                    {{ nombreCompleto(asis) }}
                   </h4>
                   <span class="px-1.5 py-0.5 rounded text-xs font-extrabold bg-emerald-100 text-emerald-800 shrink-0">
                     Activo
@@ -1852,7 +1853,7 @@ import { DespachoMasivoModalComponent } from './despacho-masivo/despacho-masivo-
             <span class="font-mono font-bold text-slate-800">{{ m.costoTotal != null ? ('$' + (m.costoTotal | number:'1.2-2')) : '—' }}</span>
           </ng-template>
           <ng-template appCell="responsable" let-m>
-            <span class="text-slate-600 whitespace-nowrap">{{ m.responsable ? (m.responsable.name + ' ' + m.responsable.lastname) : 'Sistema' }}</span>
+            <span class="text-slate-600 whitespace-nowrap">{{ m.responsable ? nombreCompleto(m.responsable) : 'Sistema' }}</span>
           </ng-template>
           <ng-template appCell="observacion" let-m>
             <span class="text-slate-600 text-xs block max-w-xs truncate" [attr.title]="m.observaciones || m.referencia || null">{{ m.observaciones || m.referencia || '-' }}</span>
@@ -1962,7 +1963,7 @@ import { DespachoMasivoModalComponent } from './despacho-masivo/despacho-masivo-
             (reintentar)="alertasTabla.cargar(true)">
 
             <ng-template appCell="sede" let-a>
-              <div class="font-bold text-slate-800" *ngIf="a.pulidor">Kit · {{ a.pulidor.name }} {{ a.pulidor.lastname }}</div>
+              <div class="font-bold text-slate-800" *ngIf="a.pulidor">Kit · {{ nombreCompleto(a.pulidor) }}</div>
               <div class="font-bold text-slate-800" *ngIf="!a.pulidor">{{ a.agencia?.nombre || 'Bodega Central' }}</div>
               <span *ngIf="a.agencia?.region" class="px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 mt-0.5 inline-block">
                 {{ a.agencia.region }}
@@ -2134,6 +2135,7 @@ import { DespachoMasivoModalComponent } from './despacho-masivo/despacho-masivo-
             <ng-template appCell="acciones" let-p>
               <button
                 type="button"
+                *ngIf="puedeRegistrarIngreso"
                 (click)="seleccionarParaEntrada(p)"
                 class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer">
                 Ingresar Stock
@@ -3453,7 +3455,7 @@ import { DespachoMasivoModalComponent } from './despacho-masivo/despacho-masivo-
                 required>
                 <option value="" disabled>Seleccione pulidor móvil destino...</option>
                 <option *ngFor="let p of getPulidoresDestino('pulidor')" [value]="p.id">
-                  {{ p.nombre || (p.name + ' ' + (p.lastname || '')) }} {{ p.regionNombre ? '· Región: ' + p.regionNombre : '(Móvil)' }}
+                  {{ p.nombre || nombreCompleto(p) }} {{ p.regionNombre ? '· Región: ' + p.regionNombre : '(Móvil)' }}
                 </option>
               </select>
               <p *ngIf="getPulidoresDestino('pulidor').length === 0" class="text-xs text-rose-600 mt-1 font-semibold">
@@ -3471,7 +3473,7 @@ import { DespachoMasivoModalComponent } from './despacho-masivo/despacho-masivo-
                 required>
                 <option value="" disabled>Seleccione pulidor fijo destino...</option>
                 <option *ngFor="let p of getPulidoresDestino('pulidor_fijo')" [value]="p.id">
-                  {{ p.nombre || (p.name + ' ' + (p.lastname || '')) }} {{ p.agenciaNombre ? '· Sucursal: ' + p.agenciaNombre : '(Sede Fija)' }}
+                  {{ p.nombre || nombreCompleto(p) }} {{ p.agenciaNombre ? '· Sucursal: ' + p.agenciaNombre : '(Sede Fija)' }}
                 </option>
               </select>
               <p *ngIf="getPulidoresDestino('pulidor_fijo').length === 0" class="text-xs text-rose-600 mt-1 font-semibold">
@@ -3815,6 +3817,7 @@ import { DespachoMasivoModalComponent } from './despacho-masivo/despacho-masivo-
   `,
 })
 export class InventarioComponent implements OnInit, OnDestroy {
+  readonly nombreCompleto = nombreCompleto;
   private inventarioService = inject(InventarioService);
   private toast = inject(ToastService);
   private auth = inject(AuthService);
@@ -4524,7 +4527,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
           return {
             id: String(p.id),
             nombre:
-              `${p.name || p.nombre || ''} ${p.lastname || p.apellido || ''}`.trim() ||
+              nombreCompleto(p) ||
               p.email ||
               p.id,
             email: p.email,
@@ -5629,7 +5632,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
           {
             id: pulidorId,
             nombre:
-              `${alerta.pulidor.name || ''} ${alerta.pulidor.lastname || ''}`.trim() ||
+              nombreCompleto(alerta.pulidor) ||
               pulidorId,
           },
         ];
@@ -5643,7 +5646,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
       this.despachoAgenciaForm.bodegaId = '';
       this.despachoAgenciaForm.pulidorId = pulidorId;
       this.despachoAgenciaForm.observacion =
-        `Despacho por alerta al kit de ${alerta.pulidor.name || 'pulidor'} ${alerta.pulidor.lastname || ''}`.trim();
+        `Despacho por alerta al kit de ${nombreCompleto(alerta.pulidor) || 'pulidor'}`;
       return;
     }
 
