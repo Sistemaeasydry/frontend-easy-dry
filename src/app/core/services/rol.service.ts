@@ -30,6 +30,7 @@ export const DEFAULT_ROLE_HEX_COLORS: Record<string, string> = {
   PULIDOR: '#0891B2',
   COORD_BODEGA: '#475569',
   ASISTENTE_BODEGA: '#0F766E',
+  TALENTO_HUMANO: '#E11D48',
 };
 
 /** Un permiso de acción del catálogo del backend (lo que se exige en cada endpoint). */

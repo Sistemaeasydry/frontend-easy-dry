@@ -63,6 +63,8 @@ export interface EstadoTimbrada {
   /** La marca que correspondería ahora según su horario; null si hoy no puede timbrar. */
   tipoActual: TipoMarca | null;
   puedeTimbrar: boolean;
+  /** false = su rol no está obligado a timbrar: no hay ventana ni evaluación, solo se registra la hora. */
+  obligatoria: boolean;
   /** Por qué no puede timbrar ahora (día libre o fuera de la ventana del horario). */
   motivoBloqueo: string | null;
   horario: { trabaja: boolean; entrada: string; salida: string };
@@ -123,7 +125,9 @@ export interface TimbradaApi {
 /** Cómo le fue a una persona un día frente a su horario. */
 export type EstadoDia =
   | 'SIN_HORARIO' | 'DIA_LIBRE' | 'PENDIENTE' | 'EN_CURSO' | 'SIN_MARCA' | 'INCOMPLETO'
-  | 'CUMPLE' | 'ATRASO' | 'ENTRADA_TEMPRANA' | 'SALIDA_ANTICIPADA' | 'SALIDA_TARDIA';
+  | 'CUMPLE' | 'ATRASO' | 'ENTRADA_TEMPRANA' | 'SALIDA_ANTICIPADA' | 'SALIDA_TARDIA'
+  /** Su rol no está obligado a timbrar: ese día no marcó, o marcó y solo se muestra la hora. */
+  | 'NO_OBLIGATORIO' | 'REGISTRADO';
 
 export interface EvaluacionDiaApi {
   userId: string;

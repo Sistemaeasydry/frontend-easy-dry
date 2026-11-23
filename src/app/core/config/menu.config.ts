@@ -193,4 +193,11 @@ export const MENU_CONFIG: MenuItem[] = [
     moduloCodigo: 'reportes',
     group: 'Administración'
   },
+  {
+    label: 'Auditoría',
+    route: '/auditoria',
+    icon: 'history',
+    moduloCodigo: 'auditoria',
+    group: 'Administración'
+  },
 ];

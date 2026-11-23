@@ -67,7 +67,9 @@ const aDia = (d: Date): string => {
                 <p>Ahora son las <strong>{{ estado.ahora | date:'HH:mm':zona }}</strong> (hora del servidor).
                   @if (estado.puedeTimbrar) { Se registraría una <strong>{{ estado.tipoActual === 'ENTRADA' ? 'entrada' : 'salida' }}</strong>. }
                 </p>
-                @if (estado.horario.trabaja && estado.ventanas) {
+                @if (!estado.obligatoria) {
+                  <p>Para tu rol timbrar <strong>no es obligatorio</strong>: se registra la hora y si marcaste antes de tu horario ({{ estado.horario.entrada }} a {{ estado.horario.salida }}).</p>
+                } @else if (estado.horario.trabaja && estado.ventanas) {
                   <p>Tu horario de hoy: <strong>{{ estado.horario.entrada }} a {{ estado.horario.salida }}</strong> · entrada de {{ estado.ventanas.entrada.desde }} a {{ estado.ventanas.entrada.hasta }} · salida de {{ estado.ventanas.salida.desde }} a {{ estado.ventanas.salida.hasta }}.</p>
                 } @else { <p>Hoy es tu <strong>día libre</strong>.</p> }
                 @if (!estado.puedeTimbrar && estado.motivoBloqueo) {

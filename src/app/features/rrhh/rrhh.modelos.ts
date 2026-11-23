@@ -143,6 +143,8 @@ export const ETIQUETA_ESTADO_DIA: Record<EstadoDia, { nombre: string; clase: str
   PENDIENTE: { nombre: 'Pendiente', clase: 'badge-neutral' },
   EN_CURSO: { nombre: 'En curso', clase: 'badge-neutral' },
   SIN_HORARIO: { nombre: 'Sin horario', clase: 'badge-neutral' },
+  NO_OBLIGATORIO: { nombre: 'No obligatorio timbrar', clase: 'badge-neutral' },
+  REGISTRADO: { nombre: 'Registrado', clase: 'badge-info' },
 };
 
 /** Estados que merecen atención (los demás son normales o aún no se pueden juzgar). */

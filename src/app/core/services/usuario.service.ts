@@ -332,6 +332,21 @@ export class UsuarioService {
   }
 
 
+  /** Edita solo los datos de la persona (nombres, cédula, celular y ciudad): permiso «Editar los datos de la persona». */
+  editarDatosPersona(id: string | number, datos: { nombre: string; apellido: string; cedula: string; telefono: string; ciudad: string }): Observable<{ id: string; cambios: Array<{ campo: string; antes: string | null; despues: string | null }> }> {
+    const payload = { id: String(id), name: datos.nombre.trim(), lastname: datos.apellido.trim(), cedula: datos.cedula.trim(), telefono: datos.telefono.trim(), ciudad: datos.ciudad.trim() };
+    return this.http.post<{ id: string; cambios: Array<{ campo: string; antes: string | null; despues: string | null }> }>(apiUrl('/agencias/usuarios/update-datos'), payload).pipe(
+      tap(() => {
+        const actuales = this.usuariosSubject.value;
+        const i = actuales.findIndex((u) => String(u.id) === String(id));
+        if (i !== -1) {
+          actuales[i] = { ...actuales[i], nombre: payload.name, apellido: payload.lastname, cedula: payload.cedula || undefined, telefono: payload.telefono || undefined, ciudad: payload.ciudad || undefined };
+          this.usuariosSubject.next([...actuales]);
+        }
+      }),
+    );
+  }
+
   /** Asigna o restablece la contraseña de un usuario existente (requiere el permiso «Asignar y restablecer contraseñas»). */
   asignarPassword(id: string | number, password: string): Observable<{ ok: true }> {
     return this.http.post<{ ok: true }>(apiUrl('/agencias/usuarios/password'), { id: String(id), password: password.trim() });

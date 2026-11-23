@@ -449,6 +449,15 @@ const COLUMNAS_ROLES: TableColumn[] = [
                       <i-lucide aria-hidden="true" name="edit-3" class="w-4 h-4"></i-lucide>
                     </button>
                   }
+                  @if (puedeDatosFila(u)) {
+                    <button
+                      type="button"
+                      (click)="abrirModalDatos(u)"
+                      title="Editar datos de la persona"
+                      class="p-1.5 min-w-9 min-h-9 inline-flex items-center justify-center text-slate-500 hover:text-easydry-blue rounded-lg hover:bg-slate-100 transition-colors cursor-pointer" aria-label="Editar datos de la persona">
+                      <i-lucide aria-hidden="true" name="edit-3" class="w-4 h-4"></i-lucide>
+                    </button>
+                  }
                   @if (puedeSoloPassword(u)) {
                     <button
                       type="button"
@@ -1333,6 +1342,43 @@ const COLUMNAS_ROLES: TableColumn[] = [
       </app-modal>
 
       <!-- ======================================================== -->
+      <!-- MODAL: DATOS DE LA PERSONA (solo el permiso de datos: sin contraseña, rol, estado ni agencia) -->
+      <!-- ======================================================== -->
+      <app-modal [isOpen]="modalDatosOpen" size="sm" title="Datos de la persona" icon="edit-3" (close)="cerrarModalDatos()">
+        <div class="space-y-3 py-2">
+          <p class="text-xs text-slate-600">Cambia solo los datos personales. La contraseña, el rol, el estado y la agencia no se modifican aquí.</p>
+          <div>
+            <label for="usuarios-datos-apellido" class="block text-xs font-bold text-slate-700 uppercase mb-1">Apellidos <span class="text-rose-500">*</span></label>
+            <input id="usuarios-datos-apellido" type="text" maxlength="80" [(ngModel)]="datosForm.apellido" name="datosApellido" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-easydry-blue/30" />
+          </div>
+          <div>
+            <label for="usuarios-datos-nombre" class="block text-xs font-bold text-slate-700 uppercase mb-1">Nombres <span class="text-rose-500">*</span></label>
+            <input id="usuarios-datos-nombre" type="text" maxlength="80" [(ngModel)]="datosForm.nombre" name="datosNombre" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-easydry-blue/30" />
+          </div>
+          <div>
+            <label for="usuarios-datos-cedula" class="block text-xs font-bold text-slate-700 uppercase mb-1">Cédula</label>
+            <input id="usuarios-datos-cedula" type="text" inputmode="numeric" maxlength="10" [(ngModel)]="datosForm.cedula" name="datosCedula" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-easydry-blue/30" placeholder="10 dígitos" />
+            @if (datosForm.cedula && !cedulaDatosValida) { <p class="text-xs text-rose-600 font-semibold mt-1">La cédula debe tener 10 dígitos.</p> }
+          </div>
+          <div>
+            <label for="usuarios-datos-telefono" class="block text-xs font-bold text-slate-700 uppercase mb-1">Celular</label>
+            <input id="usuarios-datos-telefono" type="tel" inputmode="numeric" maxlength="10" [(ngModel)]="datosForm.telefono" name="datosTelefono" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-easydry-blue/30" placeholder="09XXXXXXXX" />
+          </div>
+          <div>
+            <label for="usuarios-datos-ciudad" class="block text-xs font-bold text-slate-700 uppercase mb-1">Ciudad</label>
+            <input id="usuarios-datos-ciudad" type="text" maxlength="60" [(ngModel)]="datosForm.ciudad" name="datosCiudad" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-easydry-blue/30" />
+          </div>
+        </div>
+        <div modal-footer class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5">
+          <button type="button" (click)="cerrarModalDatos()" class="btn btn-secondary w-full sm:w-auto">Cancelar</button>
+          <button type="button" (click)="guardarDatos()" [disabled]="guardandoDatos || !datosListos" class="btn btn-primary w-full sm:w-auto">
+            <i-lucide aria-hidden="true" name="edit-3" class="w-4 h-4"></i-lucide>
+            <span>{{ guardandoDatos ? 'Guardando…' : 'Guardar datos' }}</span>
+          </button>
+        </div>
+      </app-modal>
+
+      <!-- ======================================================== -->
       <!-- MODAL: CAMBIAR CONTRASEÑA (solo el permiso de contraseñas) -->
       <!-- ======================================================== -->
       <app-modal [isOpen]="modalPasswordOpen" size="sm" title="Cambiar contraseña" icon="key" (close)="cerrarModalPassword()">
@@ -1644,6 +1690,10 @@ export class UsuariosComponent implements OnInit, OnDestroy {
   errorCatalogo: string | null = null;
   guardandoRol = false;
 
+  modalDatosOpen = false;
+  usuarioDatos: Usuario | null = null;
+  guardandoDatos = false;
+  datosForm = { nombre: '', apellido: '', cedula: '', telefono: '', ciudad: '' };
   modalPasswordOpen = false;
   usuarioPassword: Usuario | null = null;
   passwordNueva = '';
@@ -2474,6 +2524,49 @@ export class UsuariosComponent implements OnInit, OnDestroy {
    * El botón «Cambiar contraseña» de la fila es para quien tiene SOLO ese permiso (quien también puede editar usuarios la cambia desde el
    * formulario de edición). No se ofrece sobre uno mismo ni sobre el Super Administrador, ni sobre un Administrador si no se es Super Administrador.
    */
+  /** Solo los datos de la persona (RRHH): sin contraseña, rol, estado ni agencia. */
+  get puedeDatosUsuario(): boolean { return this.authService.puede('usuarios.usuarios.datos'); }
+
+  /** El botón de datos aparece solo a quien no puede editar al usuario completo (quien sí puede ya cambia estos datos en su formulario). */
+  puedeDatosFila(u: Usuario): boolean {
+    if (!this.puedeDatosUsuario || this.puedeGestionarFilaUsuario(u)) return false;
+    return String(u.rolNombre || u.rol || '').toUpperCase() !== 'SUPER_ADMIN';
+  }
+
+  get cedulaDatosValida(): boolean { return /^\d{10}$/.test(this.datosForm.cedula.trim()); }
+  get datosListos(): boolean {
+    const f = this.datosForm;
+    return !!f.nombre.trim() && !!f.apellido.trim() && (!f.cedula.trim() || this.cedulaDatosValida);
+  }
+
+  abrirModalDatos(u: Usuario): void {
+    this.usuarioDatos = u;
+    this.datosForm = { nombre: u.nombre || '', apellido: u.apellido || '', cedula: u.cedula || '', telefono: u.telefono || '', ciudad: u.ciudad || '' };
+    this.modalDatosOpen = true;
+  }
+
+  cerrarModalDatos(): void {
+    this.modalDatosOpen = false;
+    this.usuarioDatos = null;
+  }
+
+  guardarDatos(): void {
+    const u = this.usuarioDatos;
+    if (!u || !this.datosListos || this.guardandoDatos) return;
+    this.guardandoDatos = true;
+    this.usuarioService.editarDatosPersona(u.id, this.datosForm).subscribe({
+      next: (r) => {
+        this.guardandoDatos = false;
+        this.toastService.success('Datos actualizados', r.cambios.length ? 'Se actualizaron los datos de ' + nombreCompleto({ nombre: this.datosForm.nombre, apellido: this.datosForm.apellido }) + '.' : 'No había nada que cambiar.');
+        this.cerrarModalDatos();
+      },
+      error: (err) => {
+        this.guardandoDatos = false;
+        this.toastService.error('No se pudieron guardar los datos', err?.error?.message || 'El servidor no aceptó el cambio.');
+      },
+    });
+  }
+
   puedeSoloPassword(u: Usuario): boolean {
     if (!this.puedePasswordUsuario || this.puedeGestionarFilaUsuario(u)) return false;
     const actual = this.authService.getCurrentUser();

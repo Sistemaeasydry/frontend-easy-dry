@@ -220,6 +220,15 @@ export const routes: Routes = [
         ]
       },
       {
+        path: 'auditoria',
+        loadComponent: () =>
+          import('./features/auditoria/auditoria.component').then(m => m.AuditoriaComponent),
+        canActivate: [
+          authGuard,
+          moduloGuard('auditoria')
+        ]
+      },
+      {
         path: 'rrhh/dotaciones',
         loadComponent: () =>
           import('./features/rrhh/rrhh-dotaciones.component').then(m => m.RrhhDotacionesComponent),
