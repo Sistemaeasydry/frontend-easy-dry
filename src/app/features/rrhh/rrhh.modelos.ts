@@ -97,8 +97,8 @@ export const ETIQUETA_VERIFICACION: Record<string, string> = {
 export const NOMBRES_DIA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'] as const;
 const ABREVIATURA_DIA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] as const;
 
-/** Horario con el que parte todo el personal: 08:00 a 15:00 los siete días. */
-export const HORARIO_POR_DEFECTO: SemanaHorario = Array.from({ length: 7 }, () => ({ trabaja: true, entrada: '08:00', salida: '15:00' }));
+/** Horario con el que parte todo el personal: 08:00 a 17:00 los siete días (igual que el del servidor). */
+export const HORARIO_POR_DEFECTO: SemanaHorario = Array.from({ length: 7 }, () => ({ trabaja: true, entrada: '08:00', salida: '17:00' }));
 
 export const copiarSemana = (s: SemanaHorario): SemanaHorario => s.map((d) => ({ ...d }));
 
@@ -118,7 +118,7 @@ export function problemaDeSemana(semana: SemanaHorario): string | null {
   return null;
 }
 
-/** La semana en pocas líneas: los días seguidos con el mismo horario se juntan («Lun a Vie · 08:00–15:00»). */
+/** La semana en pocas líneas: los días seguidos con el mismo horario se juntan («Lun a Vie · 08:00–17:00»). */
 export function resumenSemana(semana: SemanaHorario): string[] {
   const clave = (d: DiaHorario) => (d.trabaja ? `${d.entrada}–${d.salida}` : 'Libre');
   const grupos: { desde: number; hasta: number; texto: string }[] = [];

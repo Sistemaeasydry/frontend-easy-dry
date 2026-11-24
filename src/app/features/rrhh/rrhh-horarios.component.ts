@@ -17,7 +17,7 @@ const mensajeDe = (e: unknown, defecto: string): string => {
 const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).toISOString().slice(0, 10);
 
 /**
- * RRHH · Horarios del personal. Cada persona tiene un horario por día de la semana (por defecto 08:00 a 15:00 los siete días) con un
+ * RRHH · Horarios del personal. Cada persona tiene un horario por día de la semana (por defecto 08:00 a 17:00 los siete días) con un
  * interruptor «trabaja ese día»: un día desactivado no se puede timbrar. Solo ADMIN y SUPER_ADMIN lo editan; cada cambio rige desde mañana,
  * pide un motivo y queda en el historial (quién, cuándo, el horario anterior y el nuevo). Lo ya pasado no se toca.
  */

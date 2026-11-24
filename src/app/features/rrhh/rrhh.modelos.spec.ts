@@ -64,24 +64,24 @@ describe('RRHH · reglas de las pantallas', () => {
 });
 
 const evaluacion = (userId: string, dia: string, estado: EvaluacionDiaApi['estado']): EvaluacionDiaApi => ({
-  userId, dia, estado, observaciones: [], horario: { entrada: '08:00', salida: '15:00' }, entradaReal: null, salidaReal: null,
+  userId, dia, estado, observaciones: [], horario: { entrada: '08:00', salida: '17:00' }, entradaReal: null, salidaReal: null,
   minutosEntrada: null, minutosSalida: null, horasReales: null, horasDentroHorario: null,
 });
 
 describe('RRHH · horarios', () => {
   it('resume la semana juntando los días seguidos con el mismo horario', () => {
-    expect(resumenSemana(HORARIO_POR_DEFECTO)).toEqual(['Lun a Dom · 08:00–15:00']);
+    expect(resumenSemana(HORARIO_POR_DEFECTO)).toEqual(['Lun a Dom · 08:00–17:00']);
     const s: SemanaHorario = copiarSemana(HORARIO_POR_DEFECTO);
     s[5] = { trabaja: true, entrada: '08:00', salida: '13:00' };
-    s[6] = { trabaja: false, entrada: '08:00', salida: '15:00' };
-    expect(resumenSemana(s)).toEqual(['Lun a Vie · 08:00–15:00', 'Sáb · 08:00–13:00', 'Dom · Libre']);
+    s[6] = { trabaja: false, entrada: '08:00', salida: '17:00' };
+    expect(resumenSemana(s)).toEqual(['Lun a Vie · 08:00–17:00', 'Sáb · 08:00–13:00', 'Dom · Libre']);
   });
 
   it('compara semanas sin mirar las horas de un día libre', () => {
     const a = copiarSemana(HORARIO_POR_DEFECTO);
     const b = copiarSemana(HORARIO_POR_DEFECTO);
     expect(semanasIguales(a, b)).toBe(true);
-    a[6] = { trabaja: false, entrada: '08:00', salida: '15:00' };
+    a[6] = { trabaja: false, entrada: '08:00', salida: '17:00' };
     b[6] = { trabaja: false, entrada: '09:00', salida: '10:00' };
     expect(semanasIguales(a, b)).toBe(true);
     b[0] = { ...b[0], entrada: '09:00' };
