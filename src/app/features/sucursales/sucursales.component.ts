@@ -284,28 +284,29 @@ const TODAS_LAS_REFERENCIAS: GrupoReferencia[] = ['regiones', 'marcas', 'sucursa
           @for (suc of agenciasLista.items; track suc.id) {
             <div class="bg-white rounded-2xl border border-slate-100 shadow-easydry hover:shadow-easydry-hover transition-shadow duration-300 p-5 flex flex-col justify-between group">
               <div class="space-y-4">
-                <!-- Cabecera: nombre, código, estado y cliente -->
-                <div class="flex items-start justify-between gap-3">
-                  <div class="flex items-start gap-3 min-w-0">
-                    <div class="w-11 h-11 shrink-0 rounded-2xl bg-easydry-blue/10 text-easydry-blue flex items-center justify-center">
-                      <i-lucide aria-hidden="true" name="building-2" class="w-5 h-5"></i-lucide>
+                <!-- Cabecera: nombre, código y estado; el cliente va en su propia fila para que un nombre largo no tape el de la agencia -->
+                <div class="space-y-2">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-3 min-w-0">
+                      <div class="w-11 h-11 shrink-0 rounded-2xl bg-easydry-blue/10 text-easydry-blue flex items-center justify-center">
+                        <i-lucide aria-hidden="true" name="building-2" class="w-5 h-5"></i-lucide>
+                      </div>
+                      <div class="min-w-0">
+                        <h3 class="font-bold text-slate-900 text-base font-outfit leading-tight break-words group-hover:text-easydry-blue transition-colors">{{ suc.nombre }}</h3>
+                        @if (suc.codigo) { <p class="text-[11px] font-mono text-slate-500 mt-0.5 break-all">{{ suc.codigo }}</p> }
+                      </div>
                     </div>
-                    <div class="min-w-0">
-                      <h3 class="font-bold text-slate-900 text-base font-outfit leading-tight group-hover:text-easydry-blue transition-colors">{{ suc.nombre }}</h3>
-                      @if (suc.codigo) { <p class="text-[11px] font-mono text-slate-500 mt-0.5">{{ suc.codigo }}</p> }
-                    </div>
-                  </div>
-                  <div class="flex flex-col items-end gap-1.5 shrink-0">
-                    <span class="px-2.5 py-1 rounded-full text-xs font-bold"
+                    <span class="shrink-0 px-2.5 py-1 rounded-full text-xs font-bold"
                       [ngClass]="suc.estado === 'Activo' ? 'bg-easydry-green/20 text-easydry-green-text' : (suc.estado === 'Mantenimiento' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')">
                       {{ suc.estado }}
                     </span>
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-extrabold uppercase text-white"
-                      [style.background-color]="colorMarca(suc.marcaId)">
-                      <i-lucide aria-hidden="true" name="tag" class="w-3 h-3"></i-lucide>
-                      {{ suc.clienteNombre || suc.marcaNombre || 'Sin cliente' }}
-                    </span>
                   </div>
+                  <span class="inline-flex items-center gap-1 max-w-full px-2 py-0.5 rounded-lg text-[11px] font-extrabold uppercase text-white"
+                    [style.background-color]="colorMarca(suc.marcaId)"
+                    [attr.title]="suc.clienteNombre || suc.marcaNombre || 'Sin cliente'">
+                    <i-lucide aria-hidden="true" name="tag" class="w-3 h-3 shrink-0"></i-lucide>
+                    <span class="truncate">{{ suc.clienteNombre || suc.marcaNombre || 'Sin cliente' }}</span>
+                  </span>
                 </div>
 
                 <!-- Ubicación -->
