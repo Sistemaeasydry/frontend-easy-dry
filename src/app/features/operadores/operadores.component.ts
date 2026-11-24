@@ -337,7 +337,7 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
                   [type]="verPassword ? 'text' : 'password'"
                   autocomplete="new-password"
                   [(ngModel)]="formOperador.password"
-                  [placeholder]="esLavador(formOperador.rol) ? 'Opcional (se autogenera si se deja vacío)' : 'Mínimo 10 caracteres'"
+                  [placeholder]="esLavador(formOperador.rol) ? 'Opcional (se autogenera si se deja vacío)' : 'Mínimo 8 caracteres'"
                   class="w-full p-2.5 pr-10 bg-slate-50 border rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-easydry-blue/30"
                   [ngClass]="formOperador.password && motivoPassword ? 'border-rose-500' : 'border-slate-200'" />
                 <button type="button" (click)="verPassword = !verPassword" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-easydry-blue cursor-pointer" [attr.aria-label]="verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'">
@@ -345,6 +345,16 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
                 </button>
               </div>
               <app-password-requisitos [password]="formOperador.password"></app-password-requisitos>
+              @if (formOperador.password) {
+                <label class="block mt-2 text-xs font-bold text-slate-600" for="operadores-pw-confirmar">Repite la contraseña</label>
+                <input id="operadores-pw-confirmar" name="operadores-pw-confirmar"
+                  [type]="verPassword ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  [(ngModel)]="confirmarPassword"
+                  class="w-full mt-1 p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-easydry-blue/30"
+                  [ngClass]="confirmarPassword && confirmarPassword !== formOperador.password ? 'border-rose-500' : 'border-slate-200'" />
+                @if (confirmarPassword && confirmarPassword !== formOperador.password) { <p class="text-xs font-semibold text-rose-600 mt-1">No coincide con la contraseña.</p> }
+              }
               <p class="text-xs mt-2 text-slate-500">
                 {{ esLavador(formOperador.rol) ? 'El lavador no usa el software (el líder registra OTs). Si la defines, compártela de forma segura.' : 'Anótala: se la entregas al operador y solo un administrador puede cambiarla después.' }}
               </p>
@@ -922,6 +932,7 @@ export class OperadoresComponent implements OnInit, OnDestroy {
   private sucursalOriginalId = '';
   private bahiaOriginalId = '';
   verPassword = false;
+  confirmarPassword = '';
   listaBahiasOperador: { id: string; nombre: string; operadorAsignado?: string | null; operadorId?: string | number | null; maxLavadoresPorBahia?: number; operadoresActivos?: { id: string; nombre: string }[] }[] = [];
 
   formAsignarBahia = {
@@ -1073,6 +1084,7 @@ export class OperadoresComponent implements OnInit, OnDestroy {
         motivo: ''
       };
       this.verPassword = false;
+      this.confirmarPassword = '';
 
       if (this.formOperador.sucursalId) {
         this.cargarBahiasParaCrear(this.formOperador.sucursalId);
@@ -1198,11 +1210,17 @@ export class OperadoresComponent implements OnInit, OnDestroy {
       return;
     }
     if (!this.esEdicion) {
+      let autogenerada = false;
       if (this.esLavador(this.formOperador.rol) && !this.formOperador.password?.trim()) {
         // Autogenerar contraseña segura internamente para el lavador (sin acceso al software)
         this.formOperador.password = `EasyDry${Math.floor(1000 + Math.random() * 9000)}*!`;
+        autogenerada = true;
       } else if (!this.formOperador.password?.trim() || this.motivoPassword) {
         this.toastService.warning('Contraseña no válida', this.formOperador.password?.trim() ? (this.motivoPassword as string) : 'Escribe la contraseña de acceso del operador.');
+        return;
+      }
+      if (this.formOperador.password.trim() !== this.confirmarPassword.trim() && !autogenerada) {
+        this.toastService.warning('Contraseña no coincide', 'La contraseña y su repetición deben ser iguales.');
         return;
       }
     }
@@ -1267,6 +1285,7 @@ export class OperadoresComponent implements OnInit, OnDestroy {
         nombre: this.formOperador.nombre.trim(),
         cedula: this.formOperador.cedula.trim(),
         password: this.formOperador.password.trim(),
+        passwordConfirmacion: this.confirmarPassword.trim() || undefined,
         telefono: this.formOperador.telefono?.trim() || '',
         rol: this.formOperador.rol,
         sucursal: suc ? suc.nombre : this.formOperador.sucursalNombre,

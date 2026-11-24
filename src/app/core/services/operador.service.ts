@@ -129,11 +129,12 @@ export class OperadorService {
     );
   }
 
-  crearOperador(datos: Partial<Operador> & { password: string }): Observable<Operador> {
+  crearOperador(datos: Partial<Operador> & { password: string; passwordConfirmacion?: string }): Observable<Operador> {
     const payload = {
       nombre: datos.nombre,
       cedula: datos.cedula,
       password: datos.password,
+      passwordConfirmacion: datos.passwordConfirmacion,
       telefono: datos.telefono,
       rol: datos.rol || 'LAVADOR',
       agenciaId: datos.sucursalId ? String(datos.sucursalId) : datos.sucursal,

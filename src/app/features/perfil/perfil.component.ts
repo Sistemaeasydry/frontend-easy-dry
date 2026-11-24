@@ -538,7 +538,7 @@ export class PerfilComponent implements OnInit {
     if (!this.passwordListo || this.cambiandoPassword) return;
     this.cambiandoPassword = true;
     try {
-      await firstValueFrom(this.http.post(apiUrl('/auth/cambiar-password'), { passwordActual: this.pwActual, passwordNueva: this.pwNueva }, { withCredentials: true }));
+      await firstValueFrom(this.http.post(apiUrl('/auth/cambiar-password'), { passwordActual: this.pwActual, passwordNueva: this.pwNueva, passwordConfirmacion: this.pwConfirmar }, { withCredentials: true }));
       this.toastService.success('Contraseña actualizada', 'Por seguridad se cerraron tus sesiones. Inicia sesión con la nueva contraseña.');
       this.pwActual = this.pwNueva = this.pwConfirmar = '';
       this.authService.logout();

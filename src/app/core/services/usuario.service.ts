@@ -175,7 +175,7 @@ export class UsuarioService {
     );
   }
 
-  crearUsuario(usr: Omit<Usuario, 'id'> & { password?: string; roleId?: string; regionId?: string; bodegaId?: string; bahiaId?: string }): Observable<Usuario> {
+  crearUsuario(usr: Omit<Usuario, 'id'> & { password?: string; passwordConfirmacion?: string; roleId?: string; regionId?: string; bodegaId?: string; bahiaId?: string }): Observable<Usuario> {
     const normRol = (usr.rol || '').toUpperCase();
     const isGlobal =
       (normRol.includes('SUPER') && normRol.includes('ADMIN')) ||
@@ -196,6 +196,7 @@ export class UsuarioService {
       lastname: usr.apellido,
       email: usr.email,
       password: usr.password,
+      passwordConfirmacion: (usr as any).passwordConfirmacion,
       rolNombre: usr.rol,
       roleId: usr.roleId || (usr as any).roleId || undefined,
       agencia: (isGlobal || isSupervisor || isAsistente || isPulidorMovil || agenciaFinal === 'Sin asignar') ? undefined : agenciaFinal,
@@ -236,7 +237,7 @@ export class UsuarioService {
     );
   }
 
-  actualizarUsuario(usr: Usuario & { password?: string; roleId?: string; regionId?: string; bodegaId?: string; bahiaId?: string }): Observable<Usuario> {
+  actualizarUsuario(usr: Usuario & { password?: string; passwordConfirmacion?: string; roleId?: string; regionId?: string; bodegaId?: string; bahiaId?: string }): Observable<Usuario> {
     const normRol = (usr.rol || '').toUpperCase();
     const isGlobal =
       (normRol.includes('SUPER') && normRol.includes('ADMIN')) ||
@@ -283,6 +284,7 @@ export class UsuarioService {
 
     if (usr.password && usr.password.trim().length > 0) {
       payload.password = usr.password.trim();
+      payload.passwordConfirmacion = (usr as any).passwordConfirmacion?.trim();
     }
 
     return this.http.post<any>(apiUrl('/agencias/usuarios/update'), payload, { headers: { 'x-silent': 'true' } }).pipe(
@@ -348,7 +350,7 @@ export class UsuarioService {
   }
 
   /** Asigna o restablece la contraseña de un usuario existente (requiere el permiso «Asignar y restablecer contraseñas»). */
-  asignarPassword(id: string | number, password: string): Observable<{ ok: true }> {
-    return this.http.post<{ ok: true }>(apiUrl('/agencias/usuarios/password'), { id: String(id), password: password.trim() });
+  asignarPassword(id: string | number, password: string, confirmacion?: string): Observable<{ ok: true }> {
+    return this.http.post<{ ok: true }>(apiUrl('/agencias/usuarios/password'), { id: String(id), password: password.trim(), passwordConfirmacion: confirmacion?.trim() });
   }
 }

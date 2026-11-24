@@ -190,6 +190,11 @@ const MAX_CARACTERES_LOGO = 380_000;
             </div>
               <app-password-requisitos [password]="form.password"></app-password-requisitos>
             </div>
+            <div>
+              <label class="field-label" for="sello-pass-confirmar">Repite la contraseña *</label>
+              <input id="sello-pass-confirmar" name="passwordConfirmar" [type]="verPassword ? 'text' : 'password'" class="field" [(ngModel)]="confirmarPassword" autocomplete="new-password">
+              @if (confirmarPassword && confirmarPassword !== form.password) { <p class="text-xs font-semibold text-rose-600 mt-1">No coincide con la contraseña.</p> }
+            </div>
           } @else {
             <p class="text-[11px] text-slate-500">Para cambiar la contraseña usa el botón «Cambiar contraseña» de la tarjeta del sello.</p>
           }
@@ -223,6 +228,7 @@ export class SellosComponent implements OnInit {
   errorForm = '';
   form = this.formVacio();
   verPassword = false;
+  confirmarPassword = '';
 
   /** Cambio de contraseña de un sello: tiene su propio modal, aparte de la edición de nombre y logo. */
   selloPass: SelloConfig | null = null;
@@ -254,6 +260,7 @@ export class SellosComponent implements OnInit {
   abrirNuevo(): void {
     this.editandoId = null;
     this.verPassword = false;
+    this.confirmarPassword = '';
     this.form = this.formVacio();
     this.busquedaAgencia = '';
     this.errorForm = '';
@@ -314,7 +321,7 @@ export class SellosComponent implements OnInit {
     if (nueva !== confirmacion) { this.errorPass = 'Las dos contraseñas no coinciden.'; return; }
     this.trabajando = true;
     try {
-      await firstValueFrom(this.api.editar(s.id, { password: nueva }));
+      await firstValueFrom(this.api.editar(s.id, { password: nueva, passwordConfirmacion: confirmacion }));
       this.toast.success('Contraseña cambiada', `La contraseña de ${nombreCompleto(s)} se actualizó.`);
       this.selloPass = null;
       await this.cargar();
@@ -379,6 +386,7 @@ export class SellosComponent implements OnInit {
       if (!f.password) { this.errorForm = 'La contraseña es obligatoria.'; return; }
       const motivo = motivoPasswordDebil(f.password);
       if (motivo) { this.errorForm = motivo; return; }
+      if (f.password !== this.confirmarPassword) { this.errorForm = 'Las dos contraseñas no coinciden.'; return; }
     }
     this.trabajando = true;
     try {
@@ -386,7 +394,7 @@ export class SellosComponent implements OnInit {
         await firstValueFrom(this.api.editar(this.editandoId, { nombre: f.nombre.trim(), apellido: f.apellido.trim(), logo: f.logo, agenciaIds: f.agenciaIds }));
         this.toast.success('Sello actualizado', `${f.nombre.trim()} ${f.apellido.trim()} se actualizó.`);
       } else {
-        await firstValueFrom(this.api.crear({ nombre: f.nombre.trim(), apellido: f.apellido.trim(), logo: f.logo || undefined, password: f.password, agenciaIds: f.agenciaIds }));
+        await firstValueFrom(this.api.crear({ nombre: f.nombre.trim(), apellido: f.apellido.trim(), logo: f.logo || undefined, password: f.password, passwordConfirmacion: this.confirmarPassword, agenciaIds: f.agenciaIds }));
         this.toast.success('Sello creado', `${f.nombre.trim()} ${f.apellido.trim()} ya puede firmar informes.`);
       }
       this.modalAbierto = false;

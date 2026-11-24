@@ -30,11 +30,11 @@ export class SellosService {
     return this.http.post<AgenciaConSello[]>(apiUrl(`${this.base}/agencias`), {});
   }
 
-  crear(datos: DatosSello & { password: string }): Observable<SelloConfig> {
+  crear(datos: DatosSello & { password: string; passwordConfirmacion?: string }): Observable<SelloConfig> {
     return this.http.post<SelloConfig>(apiUrl(`${this.base}/create`), datos);
   }
 
-  editar(id: string, datos: Partial<DatosSello>): Observable<SelloConfig> {
+  editar(id: string, datos: Partial<DatosSello> & { passwordConfirmacion?: string }): Observable<SelloConfig> {
     return this.http.post<SelloConfig>(apiUrl(`${this.base}/update`), { id, ...datos });
   }
 }

@@ -1,56 +1,29 @@
 import { motivoPasswordDebil, passwordCumplePolitica, PASSWORD_MENSAJE, requisitosPassword } from './password-politica';
 
-/** Debe dar lo mismo que la política del backend (`backend-easydry/src/common/utils/password-politica.spec.ts`). */
+/** Debe dar lo mismo que la política del backend (`backend-easydry/src/common/utils/password-politica.spec.ts`): solo cuenta el largo. */
 describe('política de contraseñas (panel web)', () => {
-  it('acepta contraseñas con mayúscula, minúscula, número y carácter especial', () => {
-    for (const clave of ['Lavado#2026Seco', 'Taller*Norte84', 'Cera.Pulida_77x', 'Ñandú$Verde2026']) {
+  it('acepta cualquier contraseña de 8 o más caracteres', () => {
+    for (const clave of ['12345678', 'lavadoseco', 'LAVADOSECO', 'Lavado#2026Seco', 'password']) {
       expect(passwordCumplePolitica(clave)).withContext(clave).toBeTrue();
     }
   });
 
-  it('rechaza las que les falta algún tipo de carácter o son cortas', () => {
-    for (const clave of ['Lavado2026Seco', 'lavado#2026seco', 'LAVADO#2026SECO', 'Lavado#SecoLimpio', 'Ab1#xyz']) {
+  it('rechaza las de menos de 8 caracteres', () => {
+    for (const clave of ['', 'a', 'Ab1#xyz', '1234567']) {
       expect(motivoPasswordDebil(clave)).withContext(clave).toBe(PASSWORD_MENSAJE);
     }
   });
 
-  it('el mínimo es de 10 caracteres', () => {
-    expect(passwordCumplePolitica('Lavad#2026')).toBeTrue();
-    expect(passwordCumplePolitica('Lava#2026')).toBeFalse();
+  it('el mínimo es de 8 caracteres', () => {
+    expect(passwordCumplePolitica('abcdefgh')).toBeTrue();
+    expect(passwordCumplePolitica('abcdefg')).toBeFalse();
   });
 
-  it('rechaza palabras comunes, el correo y secuencias obvias', () => {
-    expect(motivoPasswordDebil('Password#9x7Z')).toMatch(/común/);
-    expect(motivoPasswordDebil('Maria.Perez#2026X', 'maria.perez@easydry.com')).toMatch(/correo/);
-    for (const clave of ['Tallerx#1234Zq', 'Tallerx#9876Zq', 'Zabcd#Tallero5', 'Taller#5Zqaaaa']) {
-      expect(motivoPasswordDebil(clave)).withContext(clave).toMatch(/secuencias/);
+  it('el requisito en vivo es uno solo y coincide con la política', () => {
+    for (const clave of ['', 'a', 'abcdefg', 'abcdefgh', 'Lavado#2026Seco']) {
+      const r = requisitosPassword(clave);
+      expect(r.length).toBe(1);
+      expect(r[0].cumple).withContext(clave).toBe(passwordCumplePolitica(clave));
     }
-    expect(passwordCumplePolitica('Taller#5Zqaaa9')).toBeTrue();
-  });
-
-  describe('requisitos en vivo', () => {
-    const faltan = (clave: string, email?: string) => requisitosPassword(clave, email).filter((r) => !r.cumple).map((r) => r.clave);
-
-    it('una contraseña válida cumple todos', () => {
-      expect(faltan('Lavado#2026Seco')).toEqual([]);
-    });
-
-    it('marca exactamente lo que falta', () => {
-      expect(faltan('')).toEqual(['largo', 'mayuscula', 'minuscula', 'numero', 'especial']);
-      expect(faltan('Lavado2026Seco')).toEqual(['especial']);
-      expect(faltan('lavado#2026seco')).toEqual(['mayuscula']);
-      expect(faltan('LAVADO#2026SECO')).toEqual(['minuscula']);
-      expect(faltan('Lavado#SecoLimpio')).toEqual(['numero']);
-      expect(faltan('Ab1#xyz')).toEqual(['largo']);
-      expect(faltan('Tallerx#1234Zq')).toEqual(['secuencias']);
-      expect(faltan('Password#9x7Z')).toEqual(['comun']);
-      expect(faltan('Maria.Perez#2026X', 'maria.perez@easydry.com')).toEqual(['correo']);
-    });
-
-    it('todos cumplidos equivale a cumplir la política', () => {
-      for (const clave of ['', 'a', 'Lavado#2026Seco', 'Lavado2026Seco', 'Tallerx#1234Zq', 'Password#9x7Z', 'Taller#5Zqaaa9', 'Ñandú$Verde2026']) {
-        expect(requisitosPassword(clave).every((r) => r.cumple)).withContext(clave).toBe(passwordCumplePolitica(clave));
-      }
-    });
   });
 });

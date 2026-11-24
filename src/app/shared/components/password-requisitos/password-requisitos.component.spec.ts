@@ -15,38 +15,27 @@ describe('PasswordRequisitosComponent', () => {
 
   beforeEach(() => TestBed.configureTestingModule({ imports: [PasswordRequisitosComponent, LucideAngularModule.pick(EASYDRY_ICONS)] }));
 
-  it('con el campo vacío muestra los requisitos en gris, sin marcarlos como fallidos', () => {
+  it('con el campo vacío muestra el requisito en gris, sin marcarlo como fallido', () => {
     const { filas } = crear('');
-    expect(filas.length).toBe(7);
-    expect(filas.every((f) => f.classList.contains('text-slate-500'))).toBeTrue();
-    expect(filas.some((f) => f.classList.contains('text-rose-600'))).toBeFalse();
+    expect(filas.length).toBe(1);
+    expect(filas[0].classList.contains('text-slate-500')).toBeTrue();
+    expect(filas[0].classList.contains('text-rose-600')).toBeFalse();
   });
 
-  it('mientras se escribe marca en rojo lo que falta y en verde lo que ya cumple', () => {
+  it('mientras se escribe, en rojo si tiene menos de 8 caracteres', () => {
     const { filas } = crear('lavado');
-    const rojas = filas.filter((f) => f.classList.contains('text-rose-600')).map((f) => f.textContent);
-    const verdes = filas.filter((f) => f.classList.contains('text-emerald-600')).map((f) => f.textContent);
-    expect(rojas.join(' ')).toContain('Al menos 10 caracteres');
-    expect(rojas.join(' ')).toContain('mayúscula');
-    expect(rojas.join(' ')).toContain('número');
-    expect(rojas.join(' ')).toContain('especial');
-    expect(verdes.join(' ')).toContain('minúscula');
+    expect(filas[0].classList.contains('text-rose-600')).toBeTrue();
+    expect(filas[0].textContent).toContain('Al menos 8 caracteres');
   });
 
-  it('una contraseña válida deja todo en verde', () => {
-    const { filas } = crear('Lavado#2026Seco');
+  it('con 8 o más caracteres queda en verde, sin importar cuáles sean', () => {
+    const { filas } = crear('lavadoseco');
     expect(filas.every((f) => f.classList.contains('text-emerald-600'))).toBeTrue();
-  });
-
-  it('con el correo del usuario agrega el requisito de no contenerlo', () => {
-    const { filas } = crear('Maria.Perez#2026X', 'maria.perez@easydry.com');
-    expect(filas.length).toBe(8);
-    expect(filas.filter((f) => f.classList.contains('text-rose-600')).map((f) => f.textContent).join(' ')).toContain('correo');
   });
 
   it('se actualiza al cambiar la contraseña', () => {
     const { fixture } = crear('abc');
-    fixture.componentInstance.password = 'Lavado#2026Seco';
+    fixture.componentInstance.password = 'abcdefgh';
     fixture.detectChanges();
     const filas = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('li')) as HTMLElement[];
     expect(filas.every((f) => f.classList.contains('text-emerald-600'))).toBeTrue();

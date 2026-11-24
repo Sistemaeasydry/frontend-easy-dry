@@ -1022,7 +1022,7 @@ const COLUMNAS_ROLES: TableColumn[] = [
                       [type]="showPassword ? 'text' : 'password'"
                       [(ngModel)]="usuarioForm.password"
                       name="password"
-                      placeholder="Mínimo 10 caracteres"
+                      placeholder="Mínimo 8 caracteres"
                       class="w-full p-2.5 pr-10 border rounded-xl text-sm font-medium transition-all outline-none"
                       [ngClass]="passwordInvalido ? 'border-rose-500 bg-rose-50/20 ring-2 ring-rose-200' : (usuarioForm.password && !passwordValida(usuarioForm.password) ? 'border-amber-400 bg-amber-50/20' : 'border-slate-200 bg-white focus:border-easydry-blue focus:ring-2 focus:ring-easydry-blue/20')"
                       required
@@ -1116,7 +1116,7 @@ const COLUMNAS_ROLES: TableColumn[] = [
                         [type]="showPassword ? 'text' : 'password'"
                         [(ngModel)]="usuarioForm.password"
                         name="password"
-                        placeholder="Mínimo 10 caracteres"
+                        placeholder="Mínimo 8 caracteres"
                         class="w-full p-2.5 pr-10 border rounded-xl text-sm font-medium transition-all outline-none"
                         [ngClass]="passwordInvalido ? 'border-rose-500 bg-rose-50/20 ring-2 ring-rose-200' : 'border-slate-200 bg-white focus:border-easydry-blue focus:ring-2 focus:ring-easydry-blue/20'"
                         minlength="6">
@@ -1392,7 +1392,7 @@ const COLUMNAS_ROLES: TableColumn[] = [
           <div>
             <label for="usuarios-pw-nueva" class="block text-xs font-bold text-slate-700 uppercase mb-1">Nueva contraseña <span class="text-rose-500">*</span></label>
             <input id="usuarios-pw-nueva" type="password" autocomplete="new-password" [(ngModel)]="passwordNueva" name="passwordNueva" class="w-full px-3 py-2.5 rounded-xl border text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-easydry-blue/30"
-              [ngClass]="passwordNueva && motivoPasswordNueva ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200 bg-white'" placeholder="Mínimo 10 caracteres" />
+              [ngClass]="passwordNueva && motivoPasswordNueva ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200 bg-white'" placeholder="Mínimo 8 caracteres" />
             <app-password-requisitos [password]="passwordNueva" [email]="usuarioPassword?.email"></app-password-requisitos>
           </div>
           <div>
@@ -2602,7 +2602,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
     const u = this.usuarioPassword;
     if (!u || !this.passwordLista || this.guardandoPassword) return;
     this.guardandoPassword = true;
-    this.usuarioService.asignarPassword(u.id, this.passwordNueva).subscribe({
+    this.usuarioService.asignarPassword(u.id, this.passwordNueva, this.passwordConfirmar).subscribe({
       next: () => {
         this.toastService.success('Contraseña actualizada', `Se asignó la nueva contraseña de ${nombreCompleto(u)}. Sus sesiones abiertas se cerraron.`);
         this.guardandoPassword = false;
@@ -2689,7 +2689,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
         return;
       }
       if (!passwordCumplePolitica(p, this.usuarioForm.email)) {
-        this.toastService.warning('Contraseña Corta', 'La contraseña debe tener al menos 10 caracteres, con mayúscula, minúscula, número y un carácter especial (! @ # $ % & * ?).');
+        this.toastService.warning('Contraseña Corta', 'La contraseña debe tener al menos 8 caracteres.');
         return;
       }
       if (p !== c) {
@@ -2704,7 +2704,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
         return;
       }
       if (!passwordCumplePolitica(p, this.usuarioForm.email)) {
-        this.toastService.warning('Contraseña Corta', 'La nueva contraseña debe tener al menos 10 caracteres, con mayúscula, minúscula, número y un carácter especial (! @ # $ % & * ?).');
+        this.toastService.warning('Contraseña Corta', 'La nueva contraseña debe tener al menos 8 caracteres.');
         return;
       }
       if (p !== c) {
@@ -2836,7 +2836,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
         finalRegion = this.editandoUsuario.region;
       }
 
-      const actualizado: Usuario & { password?: string; roleId?: string; regionId?: string; region?: string; bodegaId?: string; bahiaId?: string } = {
+      const actualizado: Usuario & { password?: string; passwordConfirmacion?: string; roleId?: string; regionId?: string; region?: string; bodegaId?: string; bahiaId?: string } = {
         ...this.editandoUsuario,
         nombre: this.usuarioForm.nombre.trim(),
         apellido: this.usuarioForm.apellido.trim(),
@@ -2856,11 +2856,16 @@ export class UsuariosComponent implements OnInit, OnDestroy {
         modalidadPulidor: isPulidor ? modalidad.modalidadPulidor : undefined,
         servicioIds: isPulidor ? this.serviciosEspecialesCatalogo.map(s => Number(s.id)) : [],
         ...(this.usuarioForm.cambiarPassword && this.usuarioForm.password?.trim()
-          ? { password: this.usuarioForm.password.trim() }
+          ? { password: this.usuarioForm.password.trim(), passwordConfirmacion: this.usuarioForm.confirmPassword?.trim() }
           : {}),
         roleId: roleIdToSend || (this.editandoUsuario as any).roleId || undefined
       };
 
+      // Si la agencia cambia porque el rol cambió (p. ej. a uno de alcance global, que no muestra el campo de agencia), el motivo es ese.
+      const cambioDeRol = !!roleIdToSend && String(roleIdToSend) !== String((this.editandoUsuario as any).roleId ?? '');
+      if (this.cambiaAgenciaForm && cambioDeRol && !this.usuarioForm.motivoCambioAgencia?.trim()) {
+        this.usuarioForm.motivoCambioAgencia = 'Cambio de rol';
+      }
       if (this.cambiaAgenciaForm && !this.usuarioForm.motivoCambioAgencia?.trim()) {
         this.toastService.warning('Motivo requerido', 'Escribe el motivo del cambio de agencia.');
         return;
@@ -2929,7 +2934,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
         }
       }
 
-      const nuevo: Omit<Usuario, 'id'> & { password?: string; roleId?: string; regionId?: string; region?: string; bodegaId?: string; bahiaId?: string } = {
+      const nuevo: Omit<Usuario, 'id'> & { password?: string; passwordConfirmacion?: string; roleId?: string; regionId?: string; region?: string; bodegaId?: string; bahiaId?: string } = {
         nombre: this.usuarioForm.nombre.trim(),
         apellido: this.usuarioForm.apellido.trim(),
         rol: rolEncontrado?.nombre || this.usuarioForm.rol,
@@ -2950,6 +2955,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
         modalidadPulidor: isPulidor ? modalidad.modalidadPulidor : undefined,
         servicioIds: isPulidor ? this.serviciosEspecialesCatalogo.map(s => Number(s.id)) : [],
         password: this.usuarioForm.password?.trim(),
+        passwordConfirmacion: this.usuarioForm.confirmPassword?.trim(),
         roleId: roleIdToSend
       };
 
