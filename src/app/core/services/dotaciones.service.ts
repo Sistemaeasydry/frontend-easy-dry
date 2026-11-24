@@ -18,9 +18,17 @@ export interface PlanDotacionApi {
   cadaMeses: number | null;
   roles: string[];
   agenciasIds: string[];
+  /** PERSONAS: una entrega y una firma por persona. AGENCIA: una sola entrega por agencia. */
+  modoEntrega: ModoEntregaDotacion;
+  coordinadorId: string | null;
+  coordinador: string | null;
   activo: boolean;
   items: Array<{ productoId: string; producto: string; cantidad: number }>;
 }
+
+export type ModoEntregaDotacion = 'PERSONAS' | 'AGENCIA';
+
+export interface CoordinadorDotacionApi { id: string; nombre: string; rol: string; agencia: string | null }
 
 export interface GuardarPlanDotacion {
   id?: string;
@@ -30,6 +38,8 @@ export interface GuardarPlanDotacion {
   cadaMeses?: number;
   roles: string[];
   agenciasIds: string[];
+  modoEntrega: ModoEntregaDotacion;
+  coordinadorId: string;
   items: Array<{ productoId: string; cantidad: number }>;
 }
 
@@ -39,8 +49,14 @@ export interface EntregaDotacionApi {
   id: string;
   planId: string;
   plan: string;
-  personaId: string;
+  /** AGENCIA: la entrega es a la agencia completa y la recibe una sola persona. */
+  modo: ModoEntregaDotacion;
+  coordinador: string | null;
+  personaId: string | null;
   persona: string;
+  personasCubiertas: number | null;
+  recibeNombre: string | null;
+  firmada: boolean;
   rol: string;
   agencia: string | null;
   fechaProgramada: string;
@@ -72,8 +88,16 @@ export class DotacionesService {
   estadoPlan(id: string, activo: boolean): Observable<unknown> { return this.post('planes/estado', { id, activo }); }
 
   entregas(filtro: { estado?: EstadoEntregaDotacion; planId?: string; buscar?: string } = {}): Observable<EntregaDotacionApi[]> { return this.post('entregas/list', filtro); }
-  registrarEntrega(entregaId: string, items: Array<{ itemId: string; cantidadEntregada: number }>, evidencias: Array<{ url: string; nombre: string }>, nota?: string): Observable<EntregaDotacionApi> {
-    return this.post('entregas/registrar', { entregaId, items, evidencias, nota });
+  registrarEntrega(
+    entregaId: string,
+    items: Array<{ itemId: string; cantidadEntregada: number }>,
+    evidencias: Array<{ url: string; nombre: string }>,
+    recibe: { recibeNombre: string; firmaRecibe: string },
+    nota?: string,
+  ): Observable<EntregaDotacionApi> {
+    return this.post('entregas/registrar', { entregaId, items, evidencias, nota, ...recibe });
   }
+  firmaEntrega(entregaId: string): Observable<{ recibeNombre: string | null; firma: string | null }> { return this.post('entregas/firma', { entregaId }); }
+  coordinadores(): Observable<CoordinadorDotacionApi[]> { return this.post('coordinadores/list'); }
   omitirEntrega(entregaId: string, motivo: string): Observable<unknown> { return this.post('entregas/omitir', { entregaId, motivo }); }
 }

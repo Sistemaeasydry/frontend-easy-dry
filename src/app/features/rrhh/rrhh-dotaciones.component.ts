@@ -9,6 +9,7 @@ import { RolService } from '../../core/services/rol.service';
 import { AgenciaService } from '../../core/services/agencia.service';
 import {
   CategoriaDotacionApi,
+  CoordinadorDotacionApi,
   DotacionesService,
   EntregaDotacionApi,
   EstadoEntregaDotacion,
@@ -17,6 +18,8 @@ import {
   ProductoDotacionApi,
 } from '../../core/services/dotaciones.service';
 import { AdjuntoTareaApi } from '../../core/services/rrhh.service';
+import { FirmaModalComponent, type FirmaCapturada } from '../auditorias/shared/firma-modal.component';
+import { FirmaImagenComponent } from '../auditorias/shared/firma-imagen.component';
 import { AdjuntoElegido, RrhhAdjuntosComponent } from './rrhh-adjuntos.component';
 
 type Pestana = 'entregas' | 'productos' | 'planes';
@@ -47,7 +50,7 @@ interface FilaPlan { productoId: string; cantidad: number }
 @Component({
   selector: 'app-rrhh-dotaciones',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule, ModalComponent, RrhhAdjuntosComponent],
+  imports: [CommonModule, FormsModule, LucideAngularModule, ModalComponent, RrhhAdjuntosComponent, FirmaModalComponent, FirmaImagenComponent],
   template: `
     <div class="space-y-5 animate-fade-in">
       <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-easydry">
@@ -55,7 +58,7 @@ interface FilaPlan { productoId: string; cantidad: number }
           <i-lucide name="package-check" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide><span>RRHH</span>
         </div>
         <h1 class="text-2xl font-extrabold text-slate-900 font-outfit">Dotaciones</h1>
-        <p class="text-slate-500 text-xs mt-1 max-w-2xl">Uniformes, EPP y lo que definas: productos con su stock, planes por rol o agencia y la entrega a cada persona con fotos de evidencia.</p>
+        <p class="text-slate-500 text-xs mt-1 max-w-2xl">Uniformes, EPP y lo que definas: productos con su stock, planes por rol o agencia, y un coordinador que sale a entregar: a la agencia completa (firma uno) o persona por persona (firma cada una), con fotos de evidencia.</p>
       </div>
 
       <div class="flex gap-1 border-b border-slate-200" role="tablist" aria-label="Dotaciones">
@@ -88,14 +91,16 @@ interface FilaPlan { productoId: string; cantidad: number }
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
                 <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-200">
-                  <th class="py-2 pr-3">Fecha</th><th class="pr-3">Persona</th><th class="pr-3">Plan</th><th class="pr-3">Productos</th><th class="pr-3">Estado</th><th></th>
+                  <th class="py-2 pr-3">Fecha</th><th class="pr-3">Persona</th><th class="pr-3">Plan y coordinador</th><th class="pr-3">Productos</th><th class="pr-3">Estado</th><th></th>
                 </tr></thead>
                 <tbody>
                   @for (e of entregas; track e.id) {
                     <tr class="border-b border-slate-100 align-top">
                       <td class="py-2 pr-3 whitespace-nowrap">{{ e.fechaProgramada }}</td>
-                      <td class="pr-3"><p class="font-bold text-slate-800">{{ e.persona }}</p><p class="text-[11px] text-slate-500">{{ e.rol }}@if (e.agencia) { · {{ e.agencia }} }</p></td>
-                      <td class="pr-3">{{ e.plan }}</td>
+                      <td class="pr-3"><p class="font-bold text-slate-800">{{ e.persona }}</p>
+                        @if (e.modo === 'AGENCIA') { <p class="text-[11px] text-slate-500">Entrega a la agencia completa@if (e.personasCubiertas) { · {{ e.personasCubiertas }} personas }</p> }
+                        @else { <p class="text-[11px] text-slate-500">{{ e.rol }}@if (e.agencia) { · {{ e.agencia }} }</p> }</td>
+                      <td class="pr-3"><p>{{ e.plan }}</p>@if (e.coordinador) { <p class="text-[11px] text-slate-500">Entrega: {{ e.coordinador }}</p> }</td>
                       <td class="pr-3 text-xs">
                         @for (i of e.items; track i.id) { <p>{{ i.producto }} · {{ e.estado === 'ENTREGADA' ? (i.cantidadEntregada ?? 0) + ' de ' + i.cantidadPlan : i.cantidadPlan }}</p> }
                       </td>
@@ -183,6 +188,7 @@ interface FilaPlan { productoId: string; cantidad: number }
                 </div>
                 <p class="text-xs"><strong>Productos:</strong> {{ resumenItems(p) }}</p>
                 <p class="text-xs"><strong>Aplica a:</strong> {{ alcancePlan(p) }}</p>
+                <p class="text-xs"><strong>Entrega:</strong> {{ p.modoEntrega === 'AGENCIA' ? 'A la agencia completa (firma uno)' : 'Persona por persona (firma cada una)' }} · {{ p.coordinador || 'Sin coordinador' }}</p>
                 @if (puede('dotaciones.planes.gestionar')) {
                   <div class="flex gap-2 pt-1">
                     <button type="button" class="btn btn-secondary btn-sm" (click)="abrirPlan(p)">Editar</button>
@@ -309,6 +315,24 @@ interface FilaPlan { productoId: string; cantidad: number }
                 </div>
               </fieldset>
             }
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="field-label" for="pl-modo">Se entrega *</label>
+                <select id="pl-modo" name="modoEntrega" class="field" [(ngModel)]="modalPlan.modoEntrega">
+                  <option value="PERSONAS">Persona por persona (firma cada una)</option>
+                  <option value="AGENCIA">A la agencia completa (firma una sola persona)</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label" for="pl-coord">Coordinador que entrega *</label>
+                <select id="pl-coord" name="coordinadorId" class="field" [(ngModel)]="modalPlan.coordinadorId">
+                  <option value="">Elige un coordinador</option>
+                  @for (c of coordinadores; track c.id) { <option [value]="c.id">{{ c.nombre }} · {{ c.rol }}</option> }
+                </select>
+              </div>
+            </div>
+            @if (modalPlan.modoEntrega === 'AGENCIA') { <p class="text-[11px] text-slate-500">En modo agencia se genera una sola entrega por agencia, con las cantidades por persona multiplicadas por el personal de esa agencia que entra en el plan. Se omiten las personas sin agencia.</p> }
+            @if (!coordinadores.length) { <p class="text-[11px] text-amber-700 font-semibold">Ningún rol tiene todavía el permiso «Registrar entregas de dotación»: dáselo al rol del coordinador en Roles y Permisos.</p> }
             <p class="text-[11px] text-slate-500">Reciben el plan las personas activas de los roles o agencias marcados. ADMIN y SUPER_ADMIN no reciben dotación. Un plan nuevo no genera entregas de fechas pasadas.</p>
             <div class="flex justify-end gap-2"><button type="button" class="btn btn-secondary" (click)="modalPlan = null">Cancelar</button><button type="submit" class="btn btn-primary" [disabled]="guardando">Guardar plan</button></div>
           </form>
@@ -319,6 +343,10 @@ interface FilaPlan { productoId: string; cantidad: number }
         @if (modalEntrega) {
           <form class="space-y-4" (ngSubmit)="registrarEntrega()">
             <p class="text-xs text-slate-600">{{ modalEntrega.entrega.plan }} · programada para el {{ modalEntrega.entrega.fechaProgramada }}</p>
+            <p class="text-xs rounded-lg bg-sky-50 border border-sky-200 text-sky-900 px-3 py-2">
+              @if (modalEntrega.entrega.modo === 'AGENCIA') { Entrega a la agencia completa@if (modalEntrega.entrega.personasCubiertas) { ({{ modalEntrega.entrega.personasCubiertas }} personas) }: al final firma una sola persona que recibe en nombre de la agencia. }
+              @else { Entrega a una persona: al final escribe su nombre y que firme en pantalla. }
+            </p>
             <div class="space-y-2">
               <p class="field-label">Cantidad entregada</p>
               @for (i of modalEntrega.entrega.items; track i.id) {
@@ -333,7 +361,7 @@ interface FilaPlan { productoId: string; cantidad: number }
               <app-rrhh-adjuntos [elegidos]="modalEntrega.fotos" (elegidosChange)="modalEntrega.fotos = $event" (ocupadoChange)="subiendo = $event" [soloFotosTipo]="'FOTO_DOTACION'" [maximo]="maxFotos" etiqueta="Adjuntar fotos de la entrega"></app-rrhh-adjuntos>
             </div>
             <div><label class="field-label" for="en-nota">Nota</label><input id="en-nota" name="nota" class="field" [(ngModel)]="modalEntrega.nota" maxlength="500" placeholder="Tallas, observaciones…"></div>
-            <div class="flex justify-end gap-2"><button type="button" class="btn btn-secondary" (click)="cerrarEntrega()">Cancelar</button><button type="submit" class="btn btn-primary" [disabled]="guardando || subiendo">{{ subiendo ? 'Subiendo fotos…' : 'Confirmar entrega' }}</button></div>
+            <div class="flex justify-end gap-2"><button type="button" class="btn btn-secondary" (click)="cerrarEntrega()">Cancelar</button><button type="submit" class="btn btn-primary" [disabled]="guardando || subiendo">{{ subiendo ? 'Subiendo fotos…' : 'Continuar: nombre y firma de quien recibe' }}</button></div>
           </form>
         }
       </app-modal>
@@ -353,10 +381,21 @@ interface FilaPlan { productoId: string; cantidad: number }
             <p class="text-xs text-slate-600">{{ detalle.plan }} · {{ etiqueta[detalle.estado].texto }}@if (detalle.entregadaEn) { el {{ detalle.entregadaEn | date:'dd/MM/yyyy HH:mm':'-0500' }} }</p>
             <ul class="text-xs space-y-0.5">@for (i of detalle.items; track i.id) { <li>{{ i.producto }}: {{ i.cantidadEntregada ?? 0 }} de {{ i.cantidadPlan }}</li> }</ul>
             @if (detalle.nota) { <p class="text-xs"><strong>Nota:</strong> {{ detalle.nota }}</p> }
+            @if (detalle.coordinador) { <p class="text-xs"><strong>Entregó:</strong> {{ detalle.coordinador }}</p> }
+            @if (detalle.firmada) {
+              <div class="space-y-1">
+                <p class="text-xs"><strong>Recibió:</strong> {{ detalle.recibeNombre }}</p>
+                <app-firma-imagen [imagen]="firmaDetalle" [etiqueta]="detalle.recibeNombre || ''" alto="h-28"></app-firma-imagen>
+              </div>
+            }
             @if (detalle.evidencias.length) { <app-rrhh-adjuntos [editable]="false" [guardados]="evidenciasDe(detalle)"></app-rrhh-adjuntos> }
           </div>
         }
       </app-modal>
+
+      @if (modalEntrega?.firmando) {
+        <app-firma-modal titulo="Recibe la entrega · nombre y firma" [pedirNombre]="true" (cancelar)="cancelarFirma()" (firmada)="confirmarConFirma($event)"></app-firma-modal>
+      }
     </div>
   `,
 })
@@ -382,14 +421,16 @@ export class RrhhDotacionesComponent implements OnInit {
   productos: ProductoDotacionApi[] = [];
   planes: PlanDotacionApi[] = [];
   rolesElegibles: Array<{ codigo: string; nombre: string }> = [];
+  coordinadores: CoordinadorDotacionApi[] = [];
+  firmaDetalle: string | null = null;
   agencias: Array<{ id: string; nombre: string }> = [];
 
   modalCategoria: { id?: string; nombre: string; activa: boolean } | null = null;
   modalProducto: { id?: string; nombre: string; categoriaId: string; activo: boolean } | null = null;
   modalIngreso: { producto: ProductoDotacionApi; cantidad: number; nota: string } | null = null;
   historial: { producto: ProductoDotacionApi; lista: MovimientoDotacionApi[] } | null = null;
-  modalPlan: { id?: string; nombre: string; tipo: 'FIJO' | 'OCASIONAL'; fechaInicio: string; cadaMeses: number; alcance: 'ROLES' | 'AGENCIAS' | 'TODOS'; roles: string[]; agenciasIds: string[]; items: FilaPlan[] } | null = null;
-  modalEntrega: { entrega: EntregaDotacionApi; cantidades: Record<string, number>; fotos: AdjuntoElegido[]; nota: string } | null = null;
+  modalPlan: { id?: string; nombre: string; tipo: 'FIJO' | 'OCASIONAL'; fechaInicio: string; cadaMeses: number; alcance: 'ROLES' | 'AGENCIAS' | 'TODOS'; roles: string[]; agenciasIds: string[]; modoEntrega: 'PERSONAS' | 'AGENCIA'; coordinadorId: string; items: FilaPlan[] } | null = null;
+  modalEntrega: { entrega: EntregaDotacionApi; cantidades: Record<string, number>; fotos: AdjuntoElegido[]; nota: string; firmando: boolean } | null = null;
   modalOmitir: { entrega: EntregaDotacionApi; motivo: string } | null = null;
   detalle: EntregaDotacionApi | null = null;
 
@@ -436,6 +477,7 @@ export class RrhhDotacionesComponent implements OnInit {
       this.rolesElegibles = roles.filter((r) => !ROLES_SIN_DOTACION.includes((r.codigo || '').toUpperCase())).map((r) => ({ codigo: r.codigo, nombre: r.nombre }));
     });
     this.agenciasApi.getAgencias().subscribe((l) => (this.agencias = l.map((a) => ({ id: String(a.id), nombre: a.nombre }))));
+    if (this.puede('dotaciones.planes.gestionar')) this.api.coordinadores().subscribe({ next: (l) => (this.coordinadores = l), error: () => (this.coordinadores = []) });
   }
 
   categoriasActivas(): CategoriaDotacionApi[] { return this.categorias.filter((c) => c.activa); }
@@ -491,8 +533,8 @@ export class RrhhDotacionesComponent implements OnInit {
 
   abrirPlan(p?: PlanDotacionApi): void {
     this.modalPlan = p
-      ? { id: p.id, nombre: p.nombre, tipo: p.tipo, fechaInicio: p.fechaInicio, cadaMeses: p.cadaMeses ?? 6, alcance: p.roles.length ? 'ROLES' : p.agenciasIds.length ? 'AGENCIAS' : 'TODOS', roles: [...p.roles], agenciasIds: [...p.agenciasIds], items: p.items.map((i) => ({ productoId: i.productoId, cantidad: i.cantidad })) }
-      : { nombre: '', tipo: 'FIJO', fechaInicio: hoyEcuador(), cadaMeses: 6, alcance: 'ROLES', roles: [], agenciasIds: [], items: [{ productoId: '', cantidad: 1 }] };
+      ? { id: p.id, nombre: p.nombre, tipo: p.tipo, fechaInicio: p.fechaInicio, cadaMeses: p.cadaMeses ?? 6, alcance: p.roles.length ? 'ROLES' : p.agenciasIds.length ? 'AGENCIAS' : 'TODOS', roles: [...p.roles], agenciasIds: [...p.agenciasIds], modoEntrega: p.modoEntrega, coordinadorId: p.coordinadorId ?? '', items: p.items.map((i) => ({ productoId: i.productoId, cantidad: i.cantidad })) }
+      : { nombre: '', tipo: 'FIJO', fechaInicio: hoyEcuador(), cadaMeses: 6, alcance: 'ROLES', roles: [], agenciasIds: [], modoEntrega: 'PERSONAS', coordinadorId: '', items: [{ productoId: '', cantidad: 1 }] };
   }
 
   agregarFila(): void { this.modalPlan?.items.push({ productoId: '', cantidad: 1 }); }
@@ -512,10 +554,11 @@ export class RrhhDotacionesComponent implements OnInit {
     if (m.items.some((i) => !i.productoId || !(Number(i.cantidad) >= 1))) { this.toast.warning('Revisa los productos', 'Elige el producto y una cantidad de 1 o más en cada fila.'); return; }
     if (m.alcance === 'ROLES' && !m.roles.length) { this.toast.warning('Faltan roles', 'Marca al menos un rol o elige otra opción en «Aplica a».'); return; }
     if (m.alcance === 'AGENCIAS' && !m.agenciasIds.length) { this.toast.warning('Faltan agencias', 'Marca al menos una agencia o elige otra opción en «Aplica a».'); return; }
+    if (!m.coordinadorId) { this.toast.warning('Falta el coordinador', 'Elige quién sale a entregar este plan.'); return; }
     this.guardando = true;
     this.api.guardarPlan({
       id: m.id, nombre: m.nombre.trim(), tipo: m.tipo, fechaInicio: m.fechaInicio, ...(m.tipo === 'FIJO' ? { cadaMeses: Number(m.cadaMeses) } : {}),
-      roles: m.alcance === 'ROLES' ? m.roles : [], agenciasIds: m.alcance === 'AGENCIAS' ? m.agenciasIds : [], items: m.items.map((i) => ({ productoId: i.productoId, cantidad: Number(i.cantidad) })),
+      roles: m.alcance === 'ROLES' ? m.roles : [], agenciasIds: m.alcance === 'AGENCIAS' ? m.agenciasIds : [], modoEntrega: m.modoEntrega, coordinadorId: m.coordinadorId, items: m.items.map((i) => ({ productoId: i.productoId, cantidad: Number(i.cantidad) })),
     }).subscribe({
       next: () => { this.guardando = false; this.modalPlan = null; this.cargarPlanes(); this.toast.success('Plan guardado', ''); },
       error: (e) => { this.guardando = false; this.toast.error('No se pudo guardar el plan', mensajeDe(e, 'Inténtalo de nuevo.')); },
@@ -543,7 +586,7 @@ export class RrhhDotacionesComponent implements OnInit {
     const cantidades: Record<string, number> = {};
     for (const i of entrega.items) cantidades[i.id] = Math.min(i.cantidadPlan, i.stock);
     this.subiendo = false;
-    this.modalEntrega = { entrega, cantidades, fotos: [], nota: '' };
+    this.modalEntrega = { entrega, cantidades, fotos: [], nota: '', firmando: false };
   }
 
   cerrarEntrega(): void { this.modalEntrega = null; this.subiendo = false; }
@@ -555,10 +598,21 @@ export class RrhhDotacionesComponent implements OnInit {
     if (!items.some((i) => i.cantidadEntregada > 0)) { this.toast.warning('Falta la cantidad', 'Indica al menos un producto entregado.'); return; }
     const fotos = m.fotos.filter((f) => f.remoto && !f.error);
     if (fotos.length < 1) { this.toast.warning('Falta la evidencia', 'Sube al menos una foto de la entrega.'); return; }
+    // Lo último de la entrega: quien recibe escribe su nombre y firma en pantalla.
+    m.firmando = true;
+  }
+
+  cancelarFirma(): void { if (this.modalEntrega) this.modalEntrega.firmando = false; }
+
+  confirmarConFirma(firma: FirmaCapturada): void {
+    const m = this.modalEntrega;
+    if (!m) return;
+    const items = m.entrega.items.map((i) => ({ itemId: i.id, cantidadEntregada: Math.max(0, Math.floor(Number(m.cantidades[i.id]) || 0)) }));
+    const fotos = m.fotos.filter((f) => f.remoto && !f.error);
     this.guardando = true;
-    this.api.registrarEntrega(m.entrega.id, items, fotos.map((f) => ({ url: f.remoto, nombre: f.nombre })), m.nota.trim() || undefined).subscribe({
-      next: () => { this.guardando = false; this.cerrarEntrega(); this.cargarEntregas(); this.toast.success('Entrega registrada', 'El stock se descontó.'); },
-      error: (e) => { this.guardando = false; this.toast.error('No se pudo registrar la entrega', mensajeDe(e, 'Inténtalo de nuevo.')); },
+    this.api.registrarEntrega(m.entrega.id, items, fotos.map((f) => ({ url: f.remoto, nombre: f.nombre })), { recibeNombre: firma.nombre.trim(), firmaRecibe: firma.imagen }, m.nota.trim() || undefined).subscribe({
+      next: () => { this.guardando = false; this.cerrarEntrega(); this.cargarEntregas(); this.toast.success('Entrega registrada', 'El stock se descontó y quedó la firma de quien recibió.'); },
+      error: (e) => { this.guardando = false; m.firmando = false; this.toast.error('No se pudo registrar la entrega', mensajeDe(e, 'Inténtalo de nuevo.')); },
     });
   }
 
@@ -575,7 +629,11 @@ export class RrhhDotacionesComponent implements OnInit {
     });
   }
 
-  verEntrega(e: EntregaDotacionApi): void { this.detalle = e; }
+  verEntrega(e: EntregaDotacionApi): void {
+    this.detalle = e;
+    this.firmaDetalle = null;
+    if (e.firmada) this.api.firmaEntrega(e.id).subscribe({ next: (r) => { if (this.detalle?.id === e.id) this.firmaDetalle = r.firma; }, error: () => (this.firmaDetalle = null) });
+  }
 
   /** Las evidencias tienen la misma forma que los adjuntos de una tarea: se muestran con el mismo componente. */
   evidenciasDe(e: EntregaDotacionApi): AdjuntoTareaApi[] {
