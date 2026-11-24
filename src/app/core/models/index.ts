@@ -299,6 +299,7 @@ export interface VehiculoServicio {
   agenciaSinAprobador?: boolean;
   anuladoPorId?: string | null;
   anuladoEn?: string | null;
+  anuladoPorNombre?: string | null;
   motivoAnulacion?: string | null;
   servicios?: string[];
   regionNombre?: string;
@@ -584,6 +585,10 @@ export interface ServicioExtra {
   sucursales: string[];                  // Lista de sucursales asignadas
   insumosReceta: RecetaInsumoServicio[]; // Insumos y cantidades
   estado: 'Pendiente' | 'En Proceso' | 'Pausado' | 'Completado' | 'Cancelado';
+  /** Solo en servicios anulados: quién, cuándo y por qué. */
+  anuladoPorNombre?: string | null;
+  anuladoEn?: string | null;
+  motivoAnulacion?: string | null;
   fechaProgramada: string;
   fechaCompletado?: string;
   notas?: string;

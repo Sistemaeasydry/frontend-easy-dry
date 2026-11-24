@@ -181,7 +181,7 @@ import { nombreCompleto } from '../../core/utils/nombre-persona';
         [showBusqueda]="true"
         [placeholderBusqueda]="tabActiva === 'generales' ? 'Buscar placa (ej. PBX-8932) u Orden OT...' : 'Buscar placa u OT especial (ej. SE-SIE-0001)...'"
         [listaServicios]="listaServiciosFiltro"
-        [listaEstados]="tabActiva === 'generales' ? ['Todos', 'En Proceso', 'Por Aprobar', 'Realizados / Aprobados', 'Rechazados'] : ['Todos', 'Pendiente', 'En Proceso', 'Pausado', 'Completado', 'Cancelado']"
+        [listaEstados]="tabActiva === 'generales' ? ['Todos', 'En Proceso', 'Por Aprobar', 'Realizados / Aprobados', 'Rechazados', 'Anuladas'] : ['Todos', 'Pendiente', 'En Proceso', 'Pausado', 'Completado', 'Anuladas']"
         (filterChange)="aplicarNuevosFiltros($event)">
       </app-filter-bar>
       @if (tabActiva === 'especiales') {
@@ -301,7 +301,8 @@ import { nombreCompleto } from '../../core/utils/nombre-persona';
                                     'bg-amber-100 text-amber-800 border border-amber-300': item.estado === 'EN PROCESO',
                                     'bg-easydry-blue/15 text-easydry-blue border border-easydry-blue/30': item.estado === 'FINALIZADO',
                                     'bg-easydry-green/20 text-easydry-green-text border border-easydry-green/40': item.estado === 'APROBADO',
-                                    'bg-rose-100 text-rose-800 border border-rose-300': item.estado === 'RECHAZADO'
+                                    'bg-rose-100 text-rose-800 border border-rose-300': item.estado === 'RECHAZADO',
+                                    'bg-slate-200 text-slate-700 border border-slate-400': item.estado === 'CANCELADO'
                                   }">
                                   <span>{{ etiquetaEstado(item.estado) }}</span>
                                 </span>
@@ -428,7 +429,8 @@ import { nombreCompleto } from '../../core/utils/nombre-persona';
                       'bg-amber-100 text-amber-800': item.estado === 'EN PROCESO',
                       'bg-easydry-blue/15 text-easydry-blue': item.estado === 'FINALIZADO',
                       'bg-easydry-green/20 text-easydry-green-text': item.estado === 'APROBADO',
-                      'bg-rose-100 text-rose-800': item.estado === 'RECHAZADO'
+                      'bg-rose-100 text-rose-800': item.estado === 'RECHAZADO',
+                      'bg-slate-200 text-slate-700': item.estado === 'CANCELADO'
                     }">
                     {{ etiquetaEstado(item.estado) }}
                   </span>
@@ -995,7 +997,8 @@ import { nombreCompleto } from '../../core/utils/nombre-persona';
                   'text-amber-600': servicioDetalleSeleccionado.estado === 'EN PROCESO',
                   'text-easydry-blue': servicioDetalleSeleccionado.estado === 'FINALIZADO',
                   'text-easydry-green-text': servicioDetalleSeleccionado.estado === 'APROBADO',
-                  'text-rose-600': servicioDetalleSeleccionado.estado === 'RECHAZADO'
+                  'text-rose-600': servicioDetalleSeleccionado.estado === 'RECHAZADO',
+                  'text-slate-600': servicioDetalleSeleccionado.estado === 'CANCELADO'
                 }">{{ etiquetaEstado(servicioDetalleSeleccionado.estado, true) }}</span>
               </div>
             </div>
@@ -1021,9 +1024,9 @@ import { nombreCompleto } from '../../core/utils/nombre-persona';
                 @if (servicioDetalleSeleccionado.motivoRechazo) { <span class="block font-medium mt-0.5">Motivo: {{ servicioDetalleSeleccionado.motivoRechazo }}</span> }
               </div>
             }
-            @if (servicioDetalleSeleccionado.anuladoEn || servicioDetalleSeleccionado.motivoAnulacion) {
+            @if (servicioDetalleSeleccionado.anuladoEn || servicioDetalleSeleccionado.motivoAnulacion || servicioDetalleSeleccionado.estado === 'CANCELADO') {
               <div class="p-3 rounded-xl border border-slate-300 bg-slate-100 text-xs font-semibold text-slate-800">
-                Servicio anulado{{ servicioDetalleSeleccionado.anuladoEn ? ' el ' + (servicioDetalleSeleccionado.anuladoEn | date:'dd/MM/yyyy HH:mm') : '' }}
+                Servicio anulado{{ servicioDetalleSeleccionado.anuladoPorNombre ? ' por ' + servicioDetalleSeleccionado.anuladoPorNombre : '' }}{{ servicioDetalleSeleccionado.anuladoEn ? ' el ' + (servicioDetalleSeleccionado.anuladoEn | date:'dd/MM/yyyy HH:mm') : '' }}
                 @if (servicioDetalleSeleccionado.motivoAnulacion) { <span class="block font-medium mt-0.5">Motivo: {{ servicioDetalleSeleccionado.motivoAnulacion }}</span> }
               </div>
             }
@@ -2111,6 +2114,13 @@ import { nombreCompleto } from '../../core/utils/nombre-persona';
                 </span>
               </div>
             </div>
+
+            @if (servicioEspecialSeleccionado.estado === 'Cancelado') {
+              <div class="p-3 rounded-xl border border-slate-300 bg-slate-100 text-xs font-semibold text-slate-800">
+                Servicio anulado{{ servicioEspecialSeleccionado.anuladoPorNombre ? ' por ' + servicioEspecialSeleccionado.anuladoPorNombre : '' }}{{ servicioEspecialSeleccionado.anuladoEn ? ' el ' + (servicioEspecialSeleccionado.anuladoEn | date:'dd/MM/yyyy HH:mm') : '' }}
+                @if (servicioEspecialSeleccionado.motivoAnulacion) { <span class="block font-medium mt-0.5">Motivo: {{ servicioEspecialSeleccionado.motivoAnulacion }}</span> }
+              </div>
+            }
 
             <!-- Fechas y horas: creación, inicio y fin -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -3254,6 +3264,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
     if (e === 'POR APROBAR' || e === 'POR_APROBAR' || e === 'FALTAN DE APROBAR') return 'POR_APROBAR';
     if (e === 'REALIZADOS / APROBADOS' || e === 'REALIZADO' || e === 'REALIZADOS' || e === 'APROBADO') return 'FINALIZADO';
     if (e === 'RECHAZADOS' || e === 'RECHAZADO') return 'RECHAZADO';
+    if (e === 'ANULADAS' || e === 'ANULADO' || e === 'ANULADA') return 'CANCELADO';
     return e.replace(/\s+/g, '_');
   }
 
@@ -3286,6 +3297,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
     const e = this.neutro(this.filtrosGlobales.estado, 'Todos');
     if (!e) return undefined;
     if (e === 'Realizados / Aprobados') return 'Completado';
+    if (e === 'Anuladas') return 'Cancelado';
     return e;
   }
 
@@ -4144,6 +4156,7 @@ export class ServiciosComponent implements OnInit, OnDestroy {
   /** Estado tal como lo ve el usuario: un servicio finalizado queda pendiente hasta que el aprobador decide. */
   etiquetaEstado(estado: string | undefined, largo = false): string {
     if (estado === 'FINALIZADO') return largo ? 'PENDIENTE DE APROBACIÓN' : 'POR APROBAR';
+    if (estado === 'CANCELADO') return 'ANULADA';
     return estado || '';
   }
 

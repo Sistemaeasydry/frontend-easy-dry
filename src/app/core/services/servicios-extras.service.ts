@@ -126,6 +126,9 @@ export class ServiciosExtrasService {
       fechaInicio: item.fechaInicio || undefined,
       fechaFin: item.fechaFin || undefined,
       creadoPorNombre: item.creadoPorNombre || undefined,
+      anuladoPorNombre: item.anuladoPorNombre || null,
+      anuladoEn: item.anuladoEn || null,
+      motivoAnulacion: item.motivoAnulacion || null,
       historialPausas: Array.isArray(item.historialPausas) ? item.historialPausas : []
     };
   }

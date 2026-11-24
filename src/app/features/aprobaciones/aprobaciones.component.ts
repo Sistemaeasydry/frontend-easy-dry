@@ -51,7 +51,7 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
         [modoFechas]="'rango'"
         [showCliente]="true"
         [showBusqueda]="true"
-        [listaEstados]="['Todos', 'FINALIZADO', 'APROBADO', 'RECHAZADO']"
+        [listaEstados]="['Todos', 'FINALIZADO', 'APROBADO', 'RECHAZADO', 'Anuladas']"
         (filterChange)="aplicarNuevosFiltros($event)">
       </app-filter-bar>
 
@@ -105,9 +105,10 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
                     'bg-amber-100 text-amber-800 border border-amber-300': item.estado === 'EN PROCESO',
                     'bg-easydry-blue/15 text-easydry-blue border border-easydry-blue/30': item.estado === 'FINALIZADO',
                     'bg-easydry-green/20 text-easydry-green-text border border-easydry-green/40': item.estado === 'APROBADO',
-                    'bg-rose-100 text-rose-800 border border-rose-300': item.estado === 'RECHAZADO'
+                    'bg-rose-100 text-rose-800 border border-rose-300': item.estado === 'RECHAZADO',
+                    'bg-slate-200 text-slate-700 border border-slate-400': item.estado === 'CANCELADO'
                   }">
-                  {{ item.estado === 'FINALIZADO' ? 'PENDIENTE DE APROBACIÓN' : item.estado }}
+                  {{ item.estado === 'FINALIZADO' ? 'PENDIENTE DE APROBACIÓN' : item.estado === 'CANCELADO' ? 'ANULADA' : item.estado }}
                 </span>
               </div>
 
@@ -145,6 +146,13 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
                 <p class="mt-3 text-[11px] font-semibold text-rose-800 bg-rose-50 border border-rose-200 rounded-xl p-2.5">
                   Rechazado{{ item.aprobadoPor ? ' por ' + item.aprobadoPor : '' }}{{ etiquetaRegla(item) }}{{ item.fechaAprobacion ? ' el ' + (item.fechaAprobacion | date:'dd/MM HH:mm') : '' }}
                   @if (item.motivoRechazo) { <span class="block font-medium mt-0.5">Motivo: {{ item.motivoRechazo }}</span> }
+                </p>
+              }
+
+              @if (item.estado === 'CANCELADO') {
+                <p class="mt-3 text-[11px] font-semibold text-slate-800 bg-slate-100 border border-slate-300 rounded-xl p-2.5">
+                  Anulada{{ item.anuladoPorNombre ? ' por ' + item.anuladoPorNombre : '' }}{{ item.anuladoEn ? ' el ' + (item.anuladoEn | date:'dd/MM/yyyy HH:mm') : '' }}
+                  @if (item.motivoAnulacion) { <span class="block font-medium mt-0.5">Motivo: {{ item.motivoAnulacion }}</span> }
                 </p>
               }
 
@@ -408,6 +416,7 @@ export class AprobacionesComponent implements OnInit, OnDestroy {
       case 'FINALIZADO': return 'POR_APROBAR';
       case 'APROBADO': return 'APROBADO';
       case 'RECHAZADO': return 'RECHAZADO';
+      case 'Anuladas': return 'CANCELADO';
       default: return undefined;
     }
   }
