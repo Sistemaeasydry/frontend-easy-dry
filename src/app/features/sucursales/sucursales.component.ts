@@ -160,7 +160,7 @@ const TODAS_LAS_REFERENCIAS: GrupoReferencia[] = ['regiones', 'marcas', 'sucursa
                         </span>
                       </div>
                       <p class="text-xs text-slate-500 font-medium mt-0.5">
-                        {{ suc.direccion || suc.ciudad }} · Responsable: <strong class="text-slate-700">{{ suc.responsable }}</strong> · Líder Op: <strong class="text-easydry-blue">{{ getLiderOperador(suc) }}</strong> · Tel: {{ suc.telefono }}
+                        {{ suc.ciudad }}{{ suc.direccion ? ' · ' + suc.direccion : '' }} · Responsable: <strong class="text-slate-700">{{ suc.responsable }}</strong> · Líder Op: <strong class="text-easydry-blue">{{ getLiderOperador(suc) }}</strong> · Tel: {{ suc.telefono }}
                       </p>
                     </div>
                   </div>
@@ -313,9 +313,9 @@ const TODAS_LAS_REFERENCIAS: GrupoReferencia[] = ['regiones', 'marcas', 'sucursa
                 <div class="space-y-1 text-xs text-slate-600">
                   <p class="flex items-center gap-1.5 font-semibold">
                     <i-lucide aria-hidden="true" name="map-pin" class="w-3.5 h-3.5 text-easydry-blue shrink-0"></i-lucide>
-                    <span>{{ suc.direccion || suc.regionNombre || 'Sin región' }}</span>
+                    <span>{{ suc.regionNombre || 'Sin región' }}@if (suc.ciudad && suc.ciudad !== suc.regionNombre) { · {{ suc.ciudad }} }</span>
                   </p>
-                  @if (suc.direccion && suc.regionNombre) { <p class="pl-5 text-slate-500">Región {{ suc.regionNombre }}</p> }
+                  @if (suc.direccion) { <p class="pl-5 text-slate-500 line-clamp-2">{{ suc.direccion }}</p> }
                   @if (suc.telefono) {
                     <p class="flex items-center gap-1.5 text-slate-500">
                       <i-lucide aria-hidden="true" name="phone" class="w-3.5 h-3.5 shrink-0"></i-lucide><span>{{ suc.telefono }}</span>
