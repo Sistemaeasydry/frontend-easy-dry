@@ -60,6 +60,7 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
 
       <!-- Global Filter Bar (Filtros y Búsqueda Unificados) -->
       <app-filter-bar 
+        [showRegion]="verTodasLasAgencias"
         [showSucursal]="verTodasLasAgencias" 
         [showOperador]="false"
         [showBahia]="true"
@@ -831,6 +832,7 @@ export class OperadoresComponent implements OnInit, OnDestroy {
     if (estado === 'Activo') c.estado = 1;
     else if (estado === 'Inactivo') c.estado = 0;
     c.rol = this.neutro(f.rol, 'Todos') || undefined;
+    c.regionNombre = this.neutro(f.region, 'Todas', 'TODAS') || undefined;
     c.bahiaNombre = this.neutro(f.bahia, 'Todas') || undefined;
     c.clienteNombre = this.neutro(f.marca || f.cliente, 'Todas', 'Todos') || undefined;
     return c;

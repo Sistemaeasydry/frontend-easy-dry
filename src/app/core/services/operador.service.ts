@@ -19,6 +19,7 @@ export interface ConsultaOperadores extends Partial<ConsultaTabla> {
   estado?: number;
   bahiaNombre?: string;
   clienteNombre?: string;
+  regionNombre?: string;
 }
 
 @Injectable({
@@ -53,7 +54,7 @@ export class OperadorService {
     return postPagina<Operador>(
       this.http,
       apiUrl('/agencias/operadores/list'),
-      cuerpoConsulta(c, ['agenciaId', 'categoriaRol', 'rol', 'estado', 'bahiaNombre', 'clienteNombre']),
+      cuerpoConsulta(c, ['agenciaId', 'categoriaRol', 'rol', 'estado', 'bahiaNombre', 'clienteNombre', 'regionNombre']),
     );
   }
 
