@@ -160,7 +160,10 @@ export interface HorarioPersonaApi {
   proximoCambio: { vigenteDesde: string; semana: SemanaHorario } | null;
 }
 
-export interface HorarioEquipoApi extends HorarioPersonaApi { id: string; nombre: string; rol: string }
+/** Sábado o domingo que la persona trabaja solo esa vez (el horario semanal no cambia). */
+export interface FinDeSemanaApi { id: string; fecha: string; entrada: string; salida: string; motivo: string; hoy: boolean }
+
+export interface HorarioEquipoApi extends HorarioPersonaApi { id: string; nombre: string; rol: string; finesDeSemana: FinDeSemanaApi[] }
 
 export interface CambioHorarioApi {
   id: string;
@@ -255,6 +258,16 @@ export class RrhhService {
 
   historialHorario(userId: string): Observable<CambioHorarioApi[]> {
     return this.post('horarios/historial', { userId });
+  }
+
+  /** Activa solo por esas fechas (sábados o domingos, desde mañana) a una persona; el horario semanal no cambia. */
+  activarFinesDeSemana(userId: string, fechas: string[], entrada: string, salida: string, motivo: string): Observable<{ mensaje: string; creadas: string[] }> {
+    return this.post('horarios/fin-semana/activar', { userId, fechas, entrada, salida, motivo });
+  }
+
+  /** Quita un fin de semana activado mientras el día no haya llegado. */
+  quitarFinDeSemana(id: string): Observable<{ mensaje: string }> {
+    return this.post('horarios/fin-semana/quitar', { id });
   }
 
   /** El nuevo horario rige desde mañana; el servidor guarda la versión anterior intacta. */

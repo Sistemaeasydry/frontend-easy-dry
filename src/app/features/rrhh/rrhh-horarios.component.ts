@@ -6,7 +6,7 @@ import { ToastService } from '../../shared/services/toast.service';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AuthService } from '../../core/services/auth.service';
 import { AjusteHorarioApi, CambioAjusteApi, CambioHorarioApi, DiaHorario, HorarioEquipoApi, RrhhService } from '../../core/services/rrhh.service';
-import { NOMBRES_DIA, copiarSemana, problemaDeSemana, resumenSemana, semanasIguales } from './rrhh.modelos';
+import { NOMBRES_DIA, copiarSemana, etiquetaDia, problemaDeSemana, proximosFinesDeSemana, resumenSemana, semanasIguales } from './rrhh.modelos';
 
 const mensajeDe = (e: unknown, defecto: string): string => {
   const m = (e as { error?: { message?: string | string[] } } | null)?.error?.message;
@@ -51,7 +51,7 @@ const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).t
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-200">
-            <th class="py-2 pr-3 font-bold">Persona</th><th class="py-2 pr-3 font-bold">Rol</th><th class="py-2 pr-3 font-bold">Horario vigente</th><th class="py-2 pr-3 font-bold">Cambio programado</th><th class="py-2 font-bold text-right">Acciones</th>
+            <th class="py-2 pr-3 font-bold">Persona</th><th class="py-2 pr-3 font-bold">Rol</th><th class="py-2 pr-3 font-bold">Horario vigente</th><th class="py-2 pr-3 font-bold">Cambio programado</th><th class="py-2 pr-3 font-bold">Fines de semana activados</th><th class="py-2 font-bold text-right">Acciones</th>
           </tr></thead>
           <tbody>
             @for (p of visibles; track p.id) {
@@ -68,15 +68,26 @@ const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).t
                     @for (l of resumen(p.proximoCambio.semana); track l) { <p class="text-xs font-mono">{{ l }}</p> }
                   } @else { <span class="text-slate-400">—</span> }
                 </td>
+                <td class="py-2 pr-3">
+                  @for (f of p.finesDeSemana; track f.id) {
+                    <p class="text-xs font-mono flex items-center gap-1.5">
+                      <span>{{ etiqueta(f.fecha) }} · {{ f.entrada }}–{{ f.salida }}</span>
+                      @if (puedeEditar && !f.hoy) {
+                        <button type="button" class="text-rose-700 hover:text-rose-900 font-bold px-1" (click)="quitarFinDeSemana(f.id)" [attr.aria-label]="'Quitar ' + etiqueta(f.fecha)" title="Quitar este día">✕</button>
+                      }
+                    </p>
+                  } @empty { <span class="text-slate-400">—</span> }
+                </td>
                 <td class="py-2 text-right whitespace-nowrap">
                   <button type="button" class="btn btn-secondary btn-sm" (click)="abrirHistorial(p)"><i-lucide name="history" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Ver historial</button>
                   @if (puedeEditar) {
                     <button type="button" class="btn btn-primary btn-sm ml-1" (click)="abrirEditar(p)"><i-lucide name="edit-2" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Editar horario</button>
+                    <button type="button" class="btn btn-secondary btn-sm ml-1" (click)="abrirFinesDeSemana(p)"><i-lucide name="calendar" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Activar fin de semana</button>
                   }
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="5" class="py-8 text-center text-sm text-slate-500">{{ cargando ? 'Cargando…' : 'No hay personas con esos filtros.' }}</td></tr>
+              <tr><td colspan="6" class="py-8 text-center text-sm text-slate-500">{{ cargando ? 'Cargando…' : 'No hay personas con esos filtros.' }}</td></tr>
             }
           </tbody>
         </table>
@@ -118,6 +129,46 @@ const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).t
       <div modal-footer class="flex items-center justify-end gap-2">
         <button type="button" class="btn btn-secondary" (click)="cerrarEditar()">Cancelar</button>
         <button type="button" class="btn btn-primary" (click)="guardarHorario()" [disabled]="guardando">{{ guardando ? 'Guardando…' : 'Guardar horario' }}</button>
+      </div>
+    </app-modal>
+
+    <!-- Activar fines de semana solo por esas fechas -->
+    <app-modal [isOpen]="!!activando" [title]="activando ? 'Activar fin de semana · ' + activando.nombre : ''" icon="calendar" size="lg" (close)="activando = null">
+      @if (activando) {
+        <div class="space-y-4">
+          <p class="text-xs rounded-lg border border-sky-200 bg-sky-50 text-sky-900 p-2.5">
+            Marca los sábados o domingos que esta persona trabajará <strong>solo esas veces</strong>: después vuelve a quedar libre. Su horario semanal no cambia y rige desde mañana ({{ hasta | date:'dd/MM/yyyy' }}).
+            Para activar o desactivar un día de forma permanente usa <strong>Editar horario</strong>.
+          </p>
+          <div class="grid sm:grid-cols-2 gap-x-6 gap-y-1">
+            @for (f of fechasFin; track f.fecha) {
+              <label class="inline-flex items-center gap-2 text-sm min-h-11" [class.opacity-50]="!!f.motivoNo">
+                <input type="checkbox" [checked]="elegidas.has(f.fecha)" [disabled]="!!f.motivoNo" (change)="alternarFecha(f.fecha)" [attr.aria-label]="etiqueta(f.fecha)">
+                <span class="font-semibold text-slate-800">{{ etiqueta(f.fecha) }}</span>
+                @if (f.motivoNo) { <span class="text-[11px] text-slate-500">({{ f.motivoNo }})</span> }
+              </label>
+            }
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="field-label" for="fin-e">Entrada</label>
+              <input id="fin-e" type="time" class="field" [(ngModel)]="finEntrada">
+            </div>
+            <div>
+              <label class="field-label" for="fin-s">Salida</label>
+              <input id="fin-s" type="time" class="field" [(ngModel)]="finSalida">
+            </div>
+          </div>
+          <div>
+            <label class="field-label" for="fin-motivo">Motivo *</label>
+            <textarea id="fin-motivo" class="field" rows="2" maxlength="300" [(ngModel)]="motivo" placeholder="Ej. inventario de fin de mes"></textarea>
+          </div>
+          @if (error) { <p class="text-xs font-semibold text-rose-700" role="alert">{{ error }}</p> }
+        </div>
+      }
+      <div modal-footer class="flex items-center justify-end gap-2">
+        <button type="button" class="btn btn-secondary" (click)="activando = null">Cancelar</button>
+        <button type="button" class="btn btn-primary" (click)="guardarFinesDeSemana()" [disabled]="guardando || elegidas.size === 0">{{ guardando ? 'Guardando…' : 'Activar ' + elegidas.size + (elegidas.size === 1 ? ' día' : ' días') }}</button>
       </div>
     </app-modal>
 
@@ -206,6 +257,13 @@ export class RrhhHorariosComponent implements OnInit {
   error = '';
   guardando = false;
 
+  readonly etiqueta = etiquetaDia;
+  activando: HorarioEquipoApi | null = null;
+  fechasFin: Array<{ fecha: string; motivoNo: string }> = [];
+  elegidas = new Set<string>();
+  finEntrada = '08:00';
+  finSalida = '17:00';
+
   viendo: HorarioEquipoApi | null = null;
   historial: CambioHorarioApi[] = [];
   cargandoHistorial = false;
@@ -268,6 +326,55 @@ export class RrhhHorariosComponent implements OnInit {
         this.cargar();
       },
       error: (e) => { this.guardando = false; this.error = mensajeDe(e, 'No se pudo guardar el horario.'); },
+    });
+  }
+
+  // ───────────────────────── Fines de semana solo por fecha ─────────────────────────
+
+  abrirFinesDeSemana(p: HorarioEquipoApi): void {
+    const semana = p.proximoCambio?.semana ?? p.semana;
+    const ya = new Set(p.finesDeSemana.map((f) => f.fecha));
+    // Los próximos 8 fines de semana (16 días) desde mañana; no se ofrecen los ya activados ni los que su horario semanal ya trabaja.
+    this.fechasFin = proximosFinesDeSemana(this.hasta, 16).map((fecha) => {
+      const trabaja = semana[new Date(`${fecha}T00:00:00.000Z`).getUTCDay() === 6 ? 5 : 6]?.trabaja;
+      return { fecha, motivoNo: ya.has(fecha) ? 'ya activado' : trabaja ? 'ya trabaja ese día' : '' };
+    });
+    this.elegidas = new Set();
+    this.finEntrada = '08:00';
+    this.finSalida = '17:00';
+    this.motivo = '';
+    this.error = '';
+    this.activando = p;
+  }
+
+  alternarFecha(fecha: string): void {
+    const n = new Set(this.elegidas);
+    if (n.has(fecha)) n.delete(fecha); else n.add(fecha);
+    this.elegidas = n;
+  }
+
+  guardarFinesDeSemana(): void {
+    if (!this.activando || this.guardando) return;
+    if (this.elegidas.size === 0) { this.error = 'Elige al menos un día.'; return; }
+    if (!this.finEntrada || !this.finSalida || this.finEntrada >= this.finSalida) { this.error = 'La salida debe ser posterior a la entrada.'; return; }
+    if (this.motivo.trim().length < 5) { this.error = 'Escribe el motivo (mínimo 5 caracteres).'; return; }
+    this.guardando = true;
+    this.error = '';
+    this.api.activarFinesDeSemana(this.activando.id, [...this.elegidas].sort(), this.finEntrada, this.finSalida, this.motivo.trim()).subscribe({
+      next: (r) => {
+        this.guardando = false;
+        this.activando = null;
+        this.toast.success('Fin de semana activado', r.mensaje);
+        this.cargar();
+      },
+      error: (e) => { this.guardando = false; this.error = mensajeDe(e, 'No se pudo activar el fin de semana.'); },
+    });
+  }
+
+  quitarFinDeSemana(id: string): void {
+    this.api.quitarFinDeSemana(id).subscribe({
+      next: (r) => { this.toast.success('Día quitado', r.mensaje); this.cargar(); },
+      error: (e) => this.toast.error('No se pudo quitar', mensajeDe(e, 'No se pudo quitar el día.')),
     });
   }
 

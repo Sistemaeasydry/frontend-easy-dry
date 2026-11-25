@@ -25,6 +25,25 @@ export interface DiaTimbrado {
   incompleto: boolean;
 }
 
+/** Los próximos sábados y domingos a partir de un día (AAAA-MM-DD, incluido), en orden: `cuantos` fechas. */
+export function proximosFinesDeSemana(desde: string, cuantos: number): string[] {
+  const fechas: string[] = [];
+  const d = new Date(`${desde}T00:00:00.000Z`);
+  while (fechas.length < cuantos) {
+    const dow = d.getUTCDay(); // 0 domingo, 6 sábado
+    if (dow === 0 || dow === 6) fechas.push(d.toISOString().slice(0, 10));
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return fechas;
+}
+
+/** «sábado 28/11/2026» a partir de AAAA-MM-DD (solo para sábados y domingos). */
+export function etiquetaDia(dia: string): string {
+  const [a, m, d] = dia.split('-');
+  const nombre = new Date(`${dia}T00:00:00.000Z`).getUTCDay() === 6 ? 'sábado' : 'domingo';
+  return `${nombre} ${d}/${m}/${a}`;
+}
+
 /** Horas entre dos instantes (con dos decimales); null si la salida no es posterior. */
 export function horasEntre(entrada: string, salida: string): number | null {
   const h = (new Date(salida).getTime() - new Date(entrada).getTime()) / 3_600_000;
