@@ -28,6 +28,8 @@ export enum Role {
   /** Coordinador de bodega — inventario nacional y despachos */
   COORD_BODEGA = 'COORD_BODEGA',
   TALENTO_HUMANO = 'TALENTO_HUMANO',
+  CONTABILIDAD = 'CONTABILIDAD',
+  MARKETING = 'MARKETING',
   ASISTENTE_BODEGA = 'ASISTENTE_BODEGA',
   CUSTOM = 'CUSTOM'
 }
@@ -109,7 +111,9 @@ export const DEFAULT_ROUTE_POR_ROL: Record<string, string> = {
   [Role.TECNICO]: '/taller-tecnico',
   [Role.COORD_BODEGA]: '/dashboard',
   [Role.ASISTENTE_BODEGA]: '/dashboard',
-  [Role.TALENTO_HUMANO]: '/rrhh/timbradas'
+  [Role.TALENTO_HUMANO]: '/rrhh/timbradas',
+  [Role.CONTABILIDAD]: '/rrhh/timbradas',
+  [Role.MARKETING]: '/rrhh/timbradas'
 };
 
 /** Permisos granulares de acción por módulo (Ver vs Crear / Editar / Configurar) */
@@ -287,6 +291,8 @@ export const ROLE_LABELS: Record<string, string> = {
   [Role.COORD_BODEGA]: 'Coordinador de Bodega',
   [Role.ASISTENTE_BODEGA]: 'Asistente de Bodega',
   [Role.TALENTO_HUMANO]: 'Talento Humano',
+  [Role.CONTABILIDAD]: 'Contabilidad',
+  [Role.MARKETING]: 'Marketing',
 };
 
 export const ROLE_COLORS: Record<string, string> = {
@@ -307,6 +313,8 @@ export const ROLE_COLORS: Record<string, string> = {
   [Role.COORD_BODEGA]: 'bg-slate-100 text-slate-800 border-slate-200',
   [Role.ASISTENTE_BODEGA]: 'bg-teal-100 text-teal-800 border-teal-200',
   [Role.TALENTO_HUMANO]: 'bg-rose-100 text-rose-800 border-rose-200',
+  [Role.CONTABILIDAD]: 'bg-amber-100 text-amber-800 border-amber-200',
+  [Role.MARKETING]: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200',
 };
 
 /** Códigos oficiales que no pueden eliminarse desde la matriz de roles */
@@ -326,6 +334,8 @@ export const ROLES_OFICIALES_NO_ELIMINABLES: string[] = [
   Role.COORD_BODEGA,
   Role.ASISTENTE_BODEGA,
   Role.TALENTO_HUMANO,
+  Role.CONTABILIDAD,
+  Role.MARKETING,
 ];
 
 /** Solo el Super Administrador tiene permisos inmutables */

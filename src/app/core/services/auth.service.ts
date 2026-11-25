@@ -265,6 +265,8 @@ export class AuthService {
       'COORD_BODEGA': Role.COORD_BODEGA,
       'ASISTENTE_BODEGA': Role.ASISTENTE_BODEGA,
       'TALENTO_HUMANO': Role.TALENTO_HUMANO,
+      'CONTABILIDAD': Role.CONTABILIDAD,
+      'MARKETING': Role.MARKETING,
       'LAVADOR': Role.LAVADOR,
     };
     // Un rol creado desde «Roles y Permisos» conserva su propio código: antes se confundía con el Líder Operador.
