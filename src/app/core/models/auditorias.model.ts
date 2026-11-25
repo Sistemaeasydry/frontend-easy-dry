@@ -42,7 +42,7 @@ export const TIPOS_INSPECCION: { id: string; nombre: string }[] = [
   { id: 'APERTURA_AGENCIA', nombre: 'Apertura de agencia' },
   { id: 'CIERRE_AGENCIA', nombre: 'Cierre de agencia' },
   { id: 'NOVEDADES', nombre: 'Novedades' },
-  { id: 'MANTENIMIENTO_COMERCIAL', nombre: 'Mantenimiento comercial' },
+  { id: 'MANTENIMIENTO_COMERCIAL', nombre: 'Mantenimiento' },
   { id: 'COLISION', nombre: 'Colisión' },
   { id: 'REPARACION', nombre: 'Reparación' },
 ];
