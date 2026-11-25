@@ -43,7 +43,12 @@ export interface GuardarPlanDotacion {
   items: Array<{ productoId: string; cantidad: number }>;
 }
 
-export type EstadoEntregaDotacion = 'PENDIENTE' | 'ENTREGADA' | 'OMITIDA';
+/** PROGRAMADA: entrega futura que aún no se genera (se habilita el día que toca). */
+export type EstadoEntregaDotacion = 'PENDIENTE' | 'ENTREGADA' | 'OMITIDA' | 'PROGRAMADA';
+/** Dónde cae una entrega respecto a hoy. */
+export type MomentoEntregaDotacion = 'ATRASADA' | 'HOY' | 'FUTURA' | 'CERRADA';
+/** Filtro de estado del listado: POR_ENTREGAR = atrasadas, de hoy y próximas. */
+export type FiltroEstadoEntrega = EstadoEntregaDotacion | 'POR_ENTREGAR';
 
 export interface EntregaDotacionApi {
   id: string;
@@ -61,6 +66,7 @@ export interface EntregaDotacionApi {
   agencia: string | null;
   fechaProgramada: string;
   estado: EstadoEntregaDotacion;
+  momento: MomentoEntregaDotacion;
   entregadaEn: string | null;
   nota: string | null;
   items: Array<{ id: string; productoId: string; producto: string; categoria: string; stock: number; cantidadPlan: number; cantidadEntregada: number | null }>;
@@ -87,7 +93,7 @@ export class DotacionesService {
   guardarPlan(p: GuardarPlanDotacion): Observable<PlanDotacionApi> { return this.post('planes/guardar', p); }
   estadoPlan(id: string, activo: boolean): Observable<unknown> { return this.post('planes/estado', { id, activo }); }
 
-  entregas(filtro: { estado?: EstadoEntregaDotacion; planId?: string; buscar?: string } = {}): Observable<EntregaDotacionApi[]> { return this.post('entregas/list', filtro); }
+  entregas(filtro: { estado?: FiltroEstadoEntrega; planId?: string; buscar?: string; desde?: string; hasta?: string } = {}): Observable<EntregaDotacionApi[]> { return this.post('entregas/list', filtro); }
   registrarEntrega(
     entregaId: string,
     items: Array<{ itemId: string; cantidadEntregada: number }>,

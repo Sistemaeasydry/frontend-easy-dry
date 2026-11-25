@@ -13,6 +13,8 @@ import {
   DotacionesService,
   EntregaDotacionApi,
   EstadoEntregaDotacion,
+  FiltroEstadoEntrega,
+  MomentoEntregaDotacion,
   MovimientoDotacionApi,
   PlanDotacionApi,
   ProductoDotacionApi,
@@ -38,6 +40,14 @@ const ETIQUETA_ESTADO: Record<EstadoEntregaDotacion, { texto: string; clase: str
   PENDIENTE: { texto: 'Pendiente', clase: 'bg-amber-100 text-amber-800 border-amber-200' },
   ENTREGADA: { texto: 'Entregada', clase: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
   OMITIDA: { texto: 'Omitida', clase: 'bg-slate-100 text-slate-600 border-slate-200' },
+  PROGRAMADA: { texto: 'Programada', clase: 'bg-sky-100 text-sky-800 border-sky-200' },
+};
+
+const TITULO_GRUPO: Record<MomentoEntregaDotacion, string> = {
+  ATRASADA: 'Atrasadas · sin entregar',
+  HOY: 'Para hoy',
+  FUTURA: 'Próximas',
+  CERRADA: 'Ya cerradas',
 };
 
 interface FilaPlan { productoId: string; cantidad: number }
@@ -70,21 +80,41 @@ interface FilaPlan { productoId: string; cantidad: number }
       <!-- ───────────── Entregas ───────────── -->
       @if (pestana === 'entregas') {
         <section class="bg-white rounded-2xl border border-slate-100 shadow-easydry p-5 space-y-4" aria-label="Entregas">
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div>
               <label class="field-label" for="de-buscar">Persona</label>
               <input id="de-buscar" class="field" [(ngModel)]="buscar" (ngModelChange)="cargarEntregas()" placeholder="Nombre o apellido…" autocomplete="off">
             </div>
             <div>
-              <label class="field-label" for="de-estado">Estado</label>
-              <select id="de-estado" class="field" [(ngModel)]="filtroEstado" (ngModelChange)="cargarEntregas()">
-                <option value="">Todos</option>
-                <option value="PENDIENTE">Pendientes</option>
-                <option value="ENTREGADA">Entregadas</option>
-                <option value="OMITIDA">Omitidas</option>
+              <label class="field-label" for="de-plan">Plan</label>
+              <select id="de-plan" class="field" [(ngModel)]="filtroPlan" (ngModelChange)="cargarEntregas()">
+                <option value="">Todos los planes</option>
+                @for (p of planesFiltro; track p.id) { <option [value]="p.id">{{ p.nombre }}</option> }
               </select>
             </div>
+            <div>
+              <label class="field-label" for="de-estado">Estado</label>
+              <select id="de-estado" class="field" [(ngModel)]="filtroEstado" (ngModelChange)="cargarEntregas()">
+                <option value="POR_ENTREGAR">Por entregar (atrasadas, hoy y próximas)</option>
+                <option value="PENDIENTE">Pendientes (atrasadas y de hoy)</option>
+                <option value="PROGRAMADA">Próximas</option>
+                <option value="ENTREGADA">Entregadas</option>
+                <option value="OMITIDA">Omitidas</option>
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label" for="de-desde">Fecha desde</label>
+              <input id="de-desde" type="date" class="field" [(ngModel)]="desde" (ngModelChange)="cargarEntregas()">
+            </div>
+            <div>
+              <label class="field-label" for="de-hasta">Fecha hasta</label>
+              <input id="de-hasta" type="date" class="field" [(ngModel)]="hasta" (ngModelChange)="cargarEntregas()">
+            </div>
           </div>
+          @if (hayFiltros) {
+            <button type="button" class="btn btn-secondary btn-sm" (click)="limpiarFiltros()">Quitar filtros</button>
+          }
           @if (cargando) { <p class="text-sm text-slate-500">Cargando…</p> }
           @else if (!entregas.length) { <p class="text-sm text-slate-500">No hay entregas con ese filtro. Se generan solas cuando llega la fecha de un plan.</p> }
           @else {
@@ -94,9 +124,15 @@ interface FilaPlan { productoId: string; cantidad: number }
                   <th class="py-2 pr-3">Fecha</th><th class="pr-3">Persona</th><th class="pr-3">Plan y coordinador</th><th class="pr-3">Productos</th><th class="pr-3">Estado</th><th></th>
                 </tr></thead>
                 <tbody>
-                  @for (e of entregas; track e.id) {
-                    <tr class="border-b border-slate-100 align-top">
-                      <td class="py-2 pr-3 whitespace-nowrap">{{ e.fechaProgramada }}</td>
+                  @for (g of grupos; track g.momento) {
+                    <tr class="bg-slate-50">
+                      <th colspan="6" scope="colgroup" class="py-1.5 px-2 text-left text-[11px] font-black uppercase tracking-wide" [ngClass]="g.momento === 'ATRASADA' ? 'text-rose-700' : g.momento === 'HOY' ? 'text-amber-700' : g.momento === 'FUTURA' ? 'text-sky-700' : 'text-slate-500'">
+                        {{ g.titulo }} · {{ g.filas.length }}
+                      </th>
+                    </tr>
+                  @for (e of g.filas; track e.id) {
+                    <tr class="border-b border-slate-100 align-top" [ngClass]="e.momento === 'ATRASADA' ? 'bg-rose-50/60' : ''">
+                      <td class="py-2 pr-3 whitespace-nowrap">{{ e.fechaProgramada }}@if (e.momento === 'ATRASADA') { <p class="text-[11px] font-bold text-rose-700">{{ diasDeAtraso(e) }}</p> }</td>
                       <td class="pr-3"><p class="font-bold text-slate-800">{{ e.persona }}</p>
                         @if (e.modo === 'AGENCIA') { <p class="text-[11px] text-slate-500">Entrega a la agencia completa@if (e.personasCubiertas) { · {{ e.personasCubiertas }} personas }</p> }
                         @else { <p class="text-[11px] text-slate-500">{{ e.rol }}@if (e.agencia) { · {{ e.agencia }} }</p> }</td>
@@ -109,11 +145,14 @@ interface FilaPlan { productoId: string; cantidad: number }
                         @if (e.estado === 'PENDIENTE' && puede('dotaciones.entregas.registrar')) {
                           <button type="button" class="btn btn-primary btn-sm" (click)="abrirEntrega(e)">Registrar</button>
                           <button type="button" class="btn btn-secondary btn-sm ml-1" (click)="abrirOmitir(e)">Omitir</button>
+                        } @else if (e.estado === 'PROGRAMADA') {
+                          <span class="text-[11px] text-slate-500">Se habilita el {{ e.fechaProgramada }}</span>
                         } @else if (e.estado !== 'PENDIENTE') {
                           <button type="button" class="btn btn-secondary btn-sm" (click)="verEntrega(e)">Ver</button>
                         }
                       </td>
                     </tr>
+                  }
                   }
                 </tbody>
               </table>
@@ -415,8 +454,15 @@ export class RrhhDotacionesComponent implements OnInit {
   subiendo = false;
 
   entregas: EntregaDotacionApi[] = [];
+  /** Las entregas del listado agrupadas por momento (el servidor ya las manda en orden: atrasadas, hoy, próximas y cerradas). */
+  grupos: Array<{ momento: MomentoEntregaDotacion; titulo: string; filas: EntregaDotacionApi[] }> = [];
   buscar = '';
-  filtroEstado: '' | EstadoEntregaDotacion = 'PENDIENTE';
+  /** De inicio: todo lo que hay que hacer, con lo atrasado arriba, luego lo de hoy y al final lo que viene. */
+  filtroEstado: FiltroEstadoEntrega | '' = 'POR_ENTREGAR';
+  filtroPlan = '';
+  desde = '';
+  hasta = '';
+  planesFiltro: PlanDotacionApi[] = [];
   categorias: CategoriaDotacionApi[] = [];
   productos: ProductoDotacionApi[] = [];
   planes: PlanDotacionApi[] = [];
@@ -457,10 +503,43 @@ export class RrhhDotacionesComponent implements OnInit {
 
   cargarEntregas(): void {
     this.cargando = true;
-    this.api.entregas({ ...(this.filtroEstado ? { estado: this.filtroEstado } : {}), ...(this.buscar.trim() ? { buscar: this.buscar.trim() } : {}) }).subscribe({
-      next: (l) => { this.entregas = l; this.cargando = false; },
+    if (!this.planesFiltro.length) this.api.planes().subscribe({ next: (l) => (this.planesFiltro = l), error: () => (this.planesFiltro = []) });
+    this.api.entregas({
+      ...(this.filtroEstado ? { estado: this.filtroEstado } : {}),
+      ...(this.filtroPlan ? { planId: this.filtroPlan } : {}),
+      ...(this.buscar.trim() ? { buscar: this.buscar.trim() } : {}),
+      ...(this.desde ? { desde: this.desde } : {}),
+      ...(this.hasta ? { hasta: this.hasta } : {}),
+    }).subscribe({
+      next: (l) => { this.entregas = l; this.grupos = this.agrupar(l); this.cargando = false; },
       error: (e) => { this.cargando = false; this.toast.error('No se pudieron cargar las entregas', mensajeDe(e, 'Inténtalo de nuevo.')); },
     });
+  }
+
+  private agrupar(lista: EntregaDotacionApi[]): Array<{ momento: MomentoEntregaDotacion; titulo: string; filas: EntregaDotacionApi[] }> {
+    const orden: MomentoEntregaDotacion[] = ['ATRASADA', 'HOY', 'FUTURA', 'CERRADA'];
+    return orden
+      .map((momento) => ({ momento, titulo: TITULO_GRUPO[momento], filas: lista.filter((e) => e.momento === momento) }))
+      .filter((g) => g.filas.length > 0);
+  }
+
+  get hayFiltros(): boolean {
+    return !!(this.buscar.trim() || this.filtroPlan || this.desde || this.hasta || this.filtroEstado !== 'POR_ENTREGAR');
+  }
+
+  limpiarFiltros(): void {
+    this.buscar = '';
+    this.filtroPlan = '';
+    this.desde = '';
+    this.hasta = '';
+    this.filtroEstado = 'POR_ENTREGAR';
+    this.cargarEntregas();
+  }
+
+  /** "Atrasada 3 días": cuánto lleva sin entregarse. */
+  diasDeAtraso(e: EntregaDotacionApi): string {
+    const dias = Math.round((Date.parse(`${hoyEcuador()}T00:00:00Z`) - Date.parse(`${e.fechaProgramada}T00:00:00Z`)) / 86_400_000);
+    return `Atrasada ${dias} ${dias === 1 ? 'día' : 'días'}`;
   }
 
   private cargarCatalogo(): void {
