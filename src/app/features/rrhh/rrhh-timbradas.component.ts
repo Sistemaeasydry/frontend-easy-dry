@@ -8,8 +8,9 @@ import { AuthService } from '../../core/services/auth.service';
 import { StorageUploadService } from '../../core/services/storage-upload.service';
 import { AjusteHorarioApi, EstadoTimbrada, EvaluacionDiaApi, HorarioPersonaApi, PersonaEquipo, Puntualidad, ResultadoTimbrada, RrhhService, TimbradaApi } from '../../core/services/rrhh.service';
 import { FiltroPersonal, RrhhFiltroPersonalComponent, pasaFiltroPersonal, sinFiltroPersonal } from './rrhh-filtro-personal.component';
-import { ESTADOS_NOVEDAD, ETIQUETA_ESTADO_DIA, ETIQUETA_PUNTUALIDAD, contarPuntualidad, type ConteoPuntualidad, ETIQUETA_VERIFICACION, FilaDia, ZONA_ECUADOR, filasDelRango, resumenSemana, textoMinutos } from './rrhh.modelos';
+import { ESTADOS_NOVEDAD, ETIQUETA_ESTADO_DIA, ETIQUETA_PUNTUALIDAD, FILTROS_DIA, pasaFiltroDia, type FiltroDia, contarPuntualidad, type ConteoPuntualidad, ETIQUETA_VERIFICACION, FilaDia, ZONA_ECUADOR, filasDelRango, resumenSemana, textoMinutos } from './rrhh.modelos';
 import { RrhhHorariosComponent } from './rrhh-horarios.component';
+import { MarcaElegida, RrhhHistorialComponent, RrhhMarcaCeldaComponent, RrhhMarcaDetalleComponent } from './rrhh-marcas.component';
 import { exportarCumplimientoExcel, exportarCumplimientoPdf } from './rrhh-horarios-export';
 
 type Pestana = 'marcar' | 'equipo' | 'horarios';
@@ -21,6 +22,8 @@ const mensajeDe = (e: unknown, defecto: string): string => {
   const m = (e as { error?: { message?: string | string[] } } | null)?.error?.message;
   return Array.isArray(m) ? m.join(', ') : m ? String(m) : defecto;
 };
+
+const FILAS_POR_PAGINA = 40;
 
 const aDia = (d: Date): string => {
   const ecuador = new Date(d.getTime() - 5 * 3_600_000);
@@ -36,7 +39,7 @@ const aDia = (d: Date): string => {
 @Component({
   selector: 'app-rrhh-timbradas',
   standalone: true,
-  imports: [RrhhFiltroPersonalComponent, CommonModule, FormsModule, LucideAngularModule, ModalComponent, RrhhHorariosComponent],
+  imports: [RrhhHistorialComponent, RrhhMarcaCeldaComponent, RrhhMarcaDetalleComponent, RrhhFiltroPersonalComponent, CommonModule, FormsModule, LucideAngularModule, ModalComponent, RrhhHorariosComponent],
   template: `
     <div class="space-y-5 animate-fade-in">
       <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-easydry">
@@ -99,7 +102,7 @@ const aDia = (d: Date): string => {
                 <img [src]="fotoVista" alt="Foto de la timbrada" class="w-full max-w-sm rounded-xl border border-slate-200">
                 <button type="button" class="btn btn-secondary btn-sm" (click)="repetirFoto()"><i-lucide name="rotate-ccw" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide> Repetir foto</button>
               } @else if (camaraActiva) {
-                <video #video class="w-full max-w-sm rounded-xl bg-slate-900" autoplay playsinline muted></video>
+                <video #video class="w-full max-w-sm rounded-xl bg-slate-900 -scale-x-100" autoplay playsinline muted></video>
                 <div class="flex gap-2">
                   <button type="button" class="btn btn-primary btn-sm" (click)="tomarFoto()"><i-lucide name="camera" class="w-4 h-4" aria-hidden="true"></i-lucide> Tomar foto</button>
                   <button type="button" class="btn btn-secondary btn-sm" (click)="detenerCamara()">Cancelar</button>
@@ -141,28 +144,20 @@ const aDia = (d: Date): string => {
                 @if (ajuste) { <p class="text-slate-500 pt-1">Puntual dentro de ±{{ ajuste.toleranciaMin }} min de tu hora.</p> }
               </div>
             }
-            <h2 class="font-extrabold text-slate-900">Mis últimos días</h2>
-            <p class="text-xs text-slate-600">Atrasos en estos días: <strong [ngClass]="misAtrasos ? 'text-rose-700' : 'text-emerald-700'">{{ misAtrasos }}</strong></p>
-            <div class="overflow-x-auto">
-              <table class="w-full text-sm">
-                <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-200"><th class="py-2 pr-3 font-bold">Fecha</th><th class="py-2 pr-3 font-bold">Entrada</th><th class="py-2 pr-3 font-bold">Salida</th><th class="py-2 pr-3 font-bold">Horas</th><th class="py-2 font-bold">Estado</th></tr></thead>
-                <tbody>
-                  @for (d of misFilas; track d.dia) {
-                    <tr class="border-b border-slate-100 align-top">
-                      <td class="py-2 pr-3 whitespace-nowrap">{{ d.dia | date:'EEE dd/MM' }}</td>
-                      <td class="py-2 pr-3">@if (d.entrada) { <button type="button" class="font-mono font-bold text-easydry-blue hover:underline" (click)="verMarca(d.entrada)">{{ d.entrada.marcadaEn | date:'HH:mm':zona }}</button><span class="block text-[11px] text-slate-500">{{ minutos(d.minutosEntrada) }}</span>@if (d.puntualidadEntrada) { <span class="badge" [ngClass]="puntual[d.puntualidadEntrada].clase">{{ puntual[d.puntualidadEntrada].nombre }}</span> } } @else { <span class="text-slate-400">—</span> }</td>
-                      <td class="py-2 pr-3">@if (d.salida) { <button type="button" class="font-mono font-bold text-easydry-blue hover:underline" (click)="verMarca(d.salida)">{{ d.salida.marcadaEn | date:'HH:mm':zona }}</button><span class="block text-[11px] text-slate-500">{{ minutos(d.minutosSalida) }}</span>@if (d.puntualidadSalida) { <span class="badge" [ngClass]="puntual[d.puntualidadSalida].clase">{{ puntual[d.puntualidadSalida].nombre }}</span> } } @else { <span class="text-slate-400">—</span> }</td>
-                      <td class="py-2 pr-3 font-mono text-xs">@if (d.horasReales !== null) { {{ d.horasReales | number:'1.1-2' }} h<span class="block text-[11px] text-slate-500">{{ d.horasDentroHorario | number:'1.1-2' }} h en horario</span> } @else { — }</td>
-                      <td class="py-2"><span class="badge" [ngClass]="etiqueta(d.estado).clase">{{ etiqueta(d.estado).nombre }}</span></td>
-                    </tr>
-                  } @empty {
-                    <tr><td colspan="5" class="py-8 text-center text-sm text-slate-500">Aún no tienes días para mostrar.</td></tr>
-                  }
-                </tbody>
-              </table>
-            </div>
           </section>
         </div>
+
+        <section class="bg-white rounded-2xl border border-slate-100 shadow-easydry p-5 space-y-3" aria-label="Mi historial de timbradas">
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <h2 class="font-extrabold text-slate-900">Mi historial de timbradas</h2>
+            <div class="flex flex-wrap items-end gap-3">
+              <div><label class="field-label" for="mh-desde">Desde</label><input id="mh-desde" type="date" class="field" [(ngModel)]="misDesde" [max]="misHasta"></div>
+              <div><label class="field-label" for="mh-hasta">Hasta</label><input id="mh-hasta" type="date" class="field" [(ngModel)]="misHasta" [min]="misDesde"></div>
+              <button type="button" class="btn btn-primary" (click)="cargarMias()">Consultar</button>
+            </div>
+          </div>
+          <app-rrhh-historial [filas]="misFilas" [tolerancia]="ajuste?.toleranciaMin ?? 10" (ver)="verMarca($event)"></app-rrhh-historial>
+        </section>
       }
 
       @if (pestana === 'equipo' && verEquipo) {
@@ -200,6 +195,12 @@ const aDia = (d: Date): string => {
                   @for (o of opcionesPuntualidad; track o.id) { <option [value]="o.id">{{ o.nombre }}</option> }
                 </select>
               </div>
+              <div>
+                <label class="field-label" for="rs-est-dia">Estado del día</label>
+                <select id="rs-est-dia" class="field" [(ngModel)]="filtroDia">
+                  @for (o of filtrosDia; track o.id) { <option [value]="o.id">{{ o.nombre }}</option> }
+                </select>
+              </div>
               <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-700 min-h-11">
                 <input type="checkbox" [(ngModel)]="soloNovedades"> Solo con novedades
               </label>
@@ -226,14 +227,24 @@ const aDia = (d: Date): string => {
             </button>
           </div>
           @if (conteo.porPersona.length) {
-            <details class="rounded-xl border border-slate-200 p-3">
-              <summary class="cursor-pointer text-xs font-extrabold text-slate-800">Atrasos por persona ({{ conteo.porPersona.length }})</summary>
-              <div class="max-h-64 overflow-y-auto mt-2">
-                <table class="w-full text-sm">
-                  <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-200"><th class="py-1 pr-3 font-bold">Persona</th><th class="py-1 pr-3 font-bold text-right">Atrasos</th><th class="py-1 font-bold text-right">Minutos</th></tr></thead>
+            <details class="rounded-xl border border-slate-200 p-3" open>
+              <summary class="cursor-pointer text-sm font-extrabold text-slate-800">Resumen por persona ({{ conteo.porPersona.length }}) · cuántas veces se atrasó cada una</summary>
+              <div class="max-h-80 overflow-auto mt-2">
+                <table id="rs-resumen" class="w-full text-sm">
+                  <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-200"><th class="py-1 pr-3 font-bold">Persona</th><th class="py-1 pr-3 font-bold text-right">Veces atrasado</th><th class="py-1 pr-3 font-bold text-right">Min. de atraso</th><th class="py-1 pr-3 font-bold text-right">A tiempo</th><th class="py-1 pr-3 font-bold text-right">Muy antes</th><th class="py-1 pr-3 font-bold text-right">Salió muy antes</th><th class="py-1 pr-3 font-bold text-right">Incompletos</th><th class="py-1 pr-3 font-bold text-right">Sin marca</th><th></th></tr></thead>
                   <tbody>
                     @for (p of conteo.porPersona; track p.userId) {
-                      <tr class="border-b border-slate-100"><td class="py-1 pr-3">{{ p.persona }}</td><td class="py-1 pr-3 text-right font-extrabold text-rose-700">{{ p.atrasos }}</td><td class="py-1 text-right font-mono">{{ p.minutos }}</td></tr>
+                      <tr class="border-b border-slate-100">
+                        <td class="py-1 pr-3 font-semibold text-slate-900">{{ p.persona }}</td>
+                        <td class="py-1 pr-3 text-right font-extrabold" [ngClass]="p.atrasos ? 'text-rose-700' : 'text-slate-400'">{{ p.atrasos }}</td>
+                        <td class="py-1 pr-3 text-right font-mono">{{ p.minutos }}</td>
+                        <td class="py-1 pr-3 text-right">{{ p.aTiempo }}</td>
+                        <td class="py-1 pr-3 text-right">{{ p.muyAntes }}</td>
+                        <td class="py-1 pr-3 text-right">{{ p.salidasMuyAntes }}</td>
+                        <td class="py-1 pr-3 text-right">{{ p.incompletos }}</td>
+                        <td class="py-1 pr-3 text-right">{{ p.sinMarca }}</td>
+                        <td class="py-1 text-right"><button type="button" class="btn btn-secondary btn-sm whitespace-nowrap" (click)="verHistorial(p.userId, p.persona)">Ver historial</button></td>
+                      </tr>
                     }
                   </tbody>
                 </table>
@@ -246,13 +257,13 @@ const aDia = (d: Date): string => {
                 <th class="py-2 pr-3 font-bold">Fecha</th><th class="py-2 pr-3 font-bold">Persona</th><th class="py-2 pr-3 font-bold">Horario</th><th class="py-2 pr-3 font-bold">Entrada</th><th class="py-2 pr-3 font-bold">Salida</th><th class="py-2 pr-3 font-bold">Horas reales</th><th class="py-2 pr-3 font-bold">Horas en horario</th><th class="py-2 font-bold">Estado</th>
               </tr></thead>
               <tbody>
-                @for (d of filasEquipo; track d.dia + d.userId) {
+                @for (d of filasPagina; track d.dia + d.userId) {
                   <tr class="border-b border-slate-100 align-top">
                     <td class="py-2 pr-3 whitespace-nowrap">{{ d.dia | date:'EEE dd/MM' }}</td>
-                    <td class="py-2 pr-3">{{ d.persona }}</td>
+                    <td class="py-2 pr-3"><button type="button" class="text-left font-semibold text-slate-900 hover:text-easydry-blue hover:underline" (click)="verHistorial(d.userId, d.persona)" title="Ver su historial">{{ d.persona }}</button></td>
                     <td class="py-2 pr-3 font-mono text-xs whitespace-nowrap">{{ d.horario ? d.horario.entrada + '–' + d.horario.salida : '—' }}</td>
-                    <td class="py-2 pr-3">@if (d.entrada) { <button type="button" class="font-mono font-bold text-easydry-blue hover:underline" (click)="verMarca(d.entrada)">{{ d.entrada.marcadaEn | date:'HH:mm':zona }}</button><span class="block text-[11px] text-slate-500">{{ minutos(d.minutosEntrada) }}</span>@if (d.puntualidadEntrada) { <span class="badge" [ngClass]="puntual[d.puntualidadEntrada].clase">{{ puntual[d.puntualidadEntrada].nombre }}</span> } } @else { <span class="text-slate-400">—</span> }</td>
-                    <td class="py-2 pr-3">@if (d.salida) { <button type="button" class="font-mono font-bold text-easydry-blue hover:underline" (click)="verMarca(d.salida)">{{ d.salida.marcadaEn | date:'HH:mm':zona }}</button><span class="block text-[11px] text-slate-500">{{ minutos(d.minutosSalida) }}</span>@if (d.puntualidadSalida) { <span class="badge" [ngClass]="puntual[d.puntualidadSalida].clase">{{ puntual[d.puntualidadSalida].nombre }}</span> } } @else { <span class="text-slate-400">—</span> }</td>
+                    <td class="py-2 pr-3"><app-rrhh-marca-celda [marca]="d.entrada" [puntualidad]="d.puntualidadEntrada" [minutos]="d.minutosEntrada" [tolerancia]="ajuste?.toleranciaMin ?? 10" (ver)="verMarca($event)"></app-rrhh-marca-celda></td>
+                    <td class="py-2 pr-3"><app-rrhh-marca-celda [marca]="d.salida" [puntualidad]="d.puntualidadSalida" [minutos]="d.minutosSalida" [tolerancia]="ajuste?.toleranciaMin ?? 10" (ver)="verMarca($event)"></app-rrhh-marca-celda></td>
                     <td class="py-2 pr-3 font-mono">{{ d.horasReales !== null ? (d.horasReales | number:'1.1-2') + ' h' : '—' }}</td>
                     <td class="py-2 pr-3 font-mono">{{ d.horasDentroHorario !== null ? (d.horasDentroHorario | number:'1.1-2') + ' h' : '—' }}</td>
                     <td class="py-2">
@@ -266,26 +277,30 @@ const aDia = (d: Date): string => {
               </tbody>
             </table>
           </div>
+          @if (totalPaginas > 1) {
+            <div class="flex items-center justify-between gap-3 text-xs">
+              <span class="text-slate-500">{{ filasEquipo.length }} filas · página {{ paginaActual }} de {{ totalPaginas }}</span>
+              <span class="flex gap-2">
+                <button type="button" class="btn btn-secondary btn-sm" (click)="irAPagina(paginaActual - 1)" [disabled]="paginaActual === 1">Anterior</button>
+                <button type="button" class="btn btn-secondary btn-sm" (click)="irAPagina(paginaActual + 1)" [disabled]="paginaActual === totalPaginas">Siguiente</button>
+              </span>
+            </div>
+          }
           <p class="text-[11px] text-slate-500">«Sin marca» es un día de trabajo sin ninguna timbrada; puede deberse a un permiso o a vacaciones, que este módulo aún no registra. «Incompleto» es un día con una sola marca: no se calculan horas. Las horas en horario descuentan lo trabajado antes de la entrada o después de la salida del horario.</p>
         </section>
       }
 
       @if (pestana === 'horarios' && verEquipo) { <app-rrhh-horarios></app-rrhh-horarios> }
 
-      <app-modal [isOpen]="!!marca" [title]="marca ? (marca.tipo === 'ENTRADA' ? 'Entrada' : 'Salida') + ' · ' + marca.persona : ''" icon="camera" size="md" (close)="cerrarMarca()">
-        @if (marca) {
-          <div class="space-y-3 text-sm">
-            @if (fotoMarca) { <img [src]="fotoMarca" [alt]="'Foto de la timbrada de ' + marca.persona" class="w-full rounded-xl border border-slate-200"> }
-            @else { <div class="w-full h-40 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-xs text-slate-500">{{ errorFotoMarca || 'Cargando foto…' }}</div> }
-            <p class="text-slate-700">{{ marca.marcadaEn | date:'dd/MM/yyyy':zona }} a las <strong>{{ marca.marcadaEn | date:'HH:mm':zona }}</strong>@if (marca.sitio) { · {{ marca.sitio.nombre }} }</p>
-            <p class="text-xs text-slate-500">
-              <span class="badge" [ngClass]="marca.verificacion === 'VERIFICADA' ? 'badge-ok' : 'badge-warn'">{{ verificacion(marca.verificacion) }}</span>
-              @if (marca.distanciaM !== null) { · Estaba a {{ marca.distanciaM | number:'1.0-0' }} m (límite {{ marca.radioM }} m) }
-              @if (marca.precisionM !== null) { · Precisión del GPS {{ marca.precisionM | number:'1.0-0' }} m }
-              · Desde {{ marca.origen === 'APP' ? 'la app' : 'la web' }}
-            </p>
-          </div>
+      <app-modal [isOpen]="!!historialDe" [title]="historialDe ? 'Historial · ' + historialDe.persona : ''" icon="history" size="xl" (close)="historialDe = null">
+        @if (historialDe) {
+          <p class="text-xs text-slate-500 mb-3">Del {{ desde | date:'dd/MM/yyyy' }} al {{ hasta | date:'dd/MM/yyyy' }} (el periodo consultado en «Timbradas del equipo»).</p>
+          <app-rrhh-historial [filas]="filasDe(historialDe.userId)" [tolerancia]="ajuste?.toleranciaMin ?? 10" (ver)="verMarca($event)"></app-rrhh-historial>
         }
+      </app-modal>
+
+      <app-modal [isOpen]="!!elegida" [title]="elegida ? (elegida.marca.tipo === 'ENTRADA' ? 'Entrada' : 'Salida') + ' · ' + elegida.marca.persona : ''" icon="camera" size="lg" (close)="elegida = null">
+        @if (elegida) { <app-rrhh-marca-detalle [elegida]="elegida"></app-rrhh-marca-detalle> }
       </app-modal>
     </div>
   `,
@@ -320,6 +335,11 @@ export class RrhhTimbradasComponent implements OnInit, OnDestroy {
   hasta = aDia(new Date());
   filtroPersona = '';
   soloNovedades = false;
+  filtroDia: FiltroDia = '';
+  readonly filtrosDia = FILTROS_DIA;
+  misDesde = aDia(new Date(Date.now() - 29 * 86_400_000));
+  misHasta = aDia(new Date());
+  private pagina = 1;
   filtroEntrada: Puntualidad | '' = '';
   filtroSalida: Puntualidad | '' = '';
   readonly puntual = ETIQUETA_PUNTUALIDAD;
@@ -330,10 +350,10 @@ export class RrhhTimbradasComponent implements OnInit, OnDestroy {
   evaluacionEquipo: EvaluacionDiaApi[] = [];
   personas: PersonaEquipo[] = [];
 
-  marca: TimbradaApi | null = null;
-  fotoMarca = '';
-  errorFotoMarca = '';
+  elegida: MarcaElegida | null = null;
+  historialDe: { userId: string; persona: string } | null = null;
 
+  private cacheHistorial: { userId: string; origen: EvaluacionDiaApi[]; filas: FilaDia[] } | null = null;
   private flujo: MediaStream | null = null;
   @ViewChild('video') private video?: ElementRef<HTMLVideoElement>;
   @ViewChild('lienzo') private lienzo?: ElementRef<HTMLCanvasElement>;
@@ -373,8 +393,15 @@ export class RrhhTimbradasComponent implements OnInit, OnDestroy {
     return this.filasDelPeriodo
       .filter((f) => !this.filtroEntrada || f.puntualidadEntrada === this.filtroEntrada)
       .filter((f) => !this.filtroSalida || f.puntualidadSalida === this.filtroSalida)
+      .filter((f) => pasaFiltroDia(f, this.filtroDia))
       .filter((f) => !this.soloNovedades || ESTADOS_NOVEDAD.has(f.estado) || f.observaciones.includes('ATRASO'));
   }
+
+  /** La tabla va por páginas: cada fila puede traer dos fotos. */
+  get totalPaginas(): number { return Math.max(1, Math.ceil(this.filasEquipo.length / FILAS_POR_PAGINA)); }
+  get paginaActual(): number { return Math.min(this.pagina, this.totalPaginas); }
+  get filasPagina(): FilaDia[] { return this.filasEquipo.slice((this.paginaActual - 1) * FILAS_POR_PAGINA, this.paginaActual * FILAS_POR_PAGINA); }
+  irAPagina(n: number): void { this.pagina = Math.min(Math.max(1, n), this.totalPaginas); }
 
   alternarFiltroEntrada(estado: Puntualidad): void {
     this.filtroEntrada = this.filtroEntrada === estado ? '' : estado;
@@ -399,8 +426,11 @@ export class RrhhTimbradasComponent implements OnInit, OnDestroy {
   verificacion(v: string): string { return ETIQUETA_VERIFICACION[v] ?? v; }
 
   private cargarEstado(): void { this.api.estadoTimbrada().subscribe({ next: (e) => (this.estado = e) }); }
-  private cargarMias(): void {
-    this.api.misTimbradas().subscribe({ next: (r) => { this.misMarcas = r.filas; this.misEvaluacion = r.evaluacion; this.nombreMio = r.filas[0]?.persona ?? this.nombreMio; } });
+  cargarMias(): void {
+    this.api.misTimbradas(this.misDesde, this.misHasta).subscribe({
+      next: (r) => { this.misMarcas = r.filas; this.misEvaluacion = r.evaluacion; this.nombreMio = r.filas[0]?.persona ?? this.nombreMio; },
+      error: (e) => this.toast.error('No se pudo cargar tu historial', mensajeDe(e, 'Inténtalo de nuevo.')),
+    });
   }
   private cargarHorario(): void { this.api.miHorario().subscribe({ next: (h) => { this.miHorario = h; this.ajuste = h.ajuste; } }); }
 
@@ -414,19 +444,21 @@ export class RrhhTimbradasComponent implements OnInit, OnDestroy {
 
   // ───────────────────────── Ver una marca ─────────────────────────
 
-  async verMarca(t: TimbradaApi): Promise<void> {
-    this.marca = t;
-    this.fotoMarca = '';
-    this.errorFotoMarca = '';
-    try {
-      const url = await this.almacenamiento.resolveMediaUrlStrict(t.fotoKey);
-      if (this.marca?.id === t.id) this.fotoMarca = url;
-    } catch {
-      this.errorFotoMarca = 'No se pudo cargar la foto.';
-    }
+  verMarca(elegida: MarcaElegida): void {
+    this.elegida = elegida;
   }
 
-  cerrarMarca(): void { this.marca = null; this.fotoMarca = ''; }
+  verHistorial(userId: string, persona: string): void {
+    this.historialDe = { userId, persona };
+  }
+
+  /** Los días de una persona en el periodo consultado, sin los filtros de la tabla. */
+  filasDe(userId: string): FilaDia[] {
+    if (this.cacheHistorial?.userId !== userId || this.cacheHistorial.origen !== this.evaluacionEquipo) {
+      this.cacheHistorial = { userId, origen: this.evaluacionEquipo, filas: this.filasDelPeriodo.filter((f) => f.userId === userId) };
+    }
+    return this.cacheHistorial.filas;
+  }
 
   // ───────────────────────── Cámara ─────────────────────────
 
@@ -451,7 +483,10 @@ export class RrhhTimbradasComponent implements OnInit, OnDestroy {
     if (!v || !c || !v.videoWidth) { this.errorCamara = 'La cámara aún no está lista. Espera un segundo e inténtalo de nuevo.'; return; }
     c.width = Math.min(1024, v.videoWidth);
     c.height = Math.round((c.width * v.videoHeight) / v.videoWidth);
-    c.getContext('2d')!.drawImage(v, 0, 0, c.width, c.height);
+    const dibujo = c.getContext('2d')!;
+    // Como un espejo: la foto queda igual que lo que la persona vio al tomarla.
+    dibujo.setTransform(-1, 0, 0, 1, c.width, 0);
+    dibujo.drawImage(v, 0, 0, c.width, c.height);
     c.toBlob((blob) => {
       if (!blob) { this.errorCamara = 'No se pudo guardar la foto. Inténtalo de nuevo.'; return; }
       this.soltarFoto();

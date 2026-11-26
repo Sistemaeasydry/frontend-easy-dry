@@ -174,30 +174,76 @@ export const ETIQUETA_PUNTUALIDAD: Record<Puntualidad, { nombre: string; clase: 
   ATRASADO: { nombre: 'Atrasado', clase: 'badge-danger' },
 };
 
+export interface ResumenPersona {
+  userId: string;
+  persona: string;
+  /** Entradas atrasadas: cuántas veces se atrasó y cuántos minutos suma. */
+  atrasos: number;
+  minutos: number;
+  aTiempo: number;
+  muyAntes: number;
+  salidasMuyAntes: number;
+  incompletos: number;
+  sinMarca: number;
+}
+
 export interface ConteoPuntualidad {
   /** Entradas atrasadas: es lo que se cuenta como atraso. */
   atrasos: number;
   minutosAtraso: number;
   entradasATiempo: number;
   entradasMuyAntes: number;
-  porPersona: Array<{ userId: string; persona: string; atrasos: number; minutos: number }>;
+  salidasMuyAntes: number;
+  incompletos: number;
+  sinMarca: number;
+  /** Una fila por persona, primero quien más veces se atrasó. */
+  porPersona: ResumenPersona[];
 }
 
-/** Cuenta cómo llegó la gente en los días dados y quién acumula más atrasos. */
+/** Cuenta cómo le fue a la gente en los días dados, en total y por persona. */
 export function contarPuntualidad(filas: readonly FilaDia[]): ConteoPuntualidad {
-  const porPersona = new Map<string, { userId: string; persona: string; atrasos: number; minutos: number }>();
-  const conteo = { atrasos: 0, minutosAtraso: 0, entradasATiempo: 0, entradasMuyAntes: 0 };
+  const porPersona = new Map<string, ResumenPersona>();
   for (const f of filas) {
-    if (f.puntualidadEntrada === 'A_TIEMPO') conteo.entradasATiempo++;
-    if (f.puntualidadEntrada === 'MUY_ANTES') conteo.entradasMuyAntes++;
-    if (f.puntualidadEntrada !== 'ATRASADO') continue;
-    const minutos = f.minutosEntrada ?? 0;
-    conteo.atrasos++;
-    conteo.minutosAtraso += minutos;
-    const p = porPersona.get(f.userId) ?? { userId: f.userId, persona: f.persona, atrasos: 0, minutos: 0 };
-    porPersona.set(f.userId, { ...p, atrasos: p.atrasos + 1, minutos: p.minutos + minutos });
+    const p = porPersona.get(f.userId) ?? { userId: f.userId, persona: f.persona, atrasos: 0, minutos: 0, aTiempo: 0, muyAntes: 0, salidasMuyAntes: 0, incompletos: 0, sinMarca: 0 };
+    if (f.puntualidadEntrada === 'ATRASADO') { p.atrasos++; p.minutos += f.minutosEntrada ?? 0; }
+    if (f.puntualidadEntrada === 'A_TIEMPO') p.aTiempo++;
+    if (f.puntualidadEntrada === 'MUY_ANTES') p.muyAntes++;
+    if (f.puntualidadSalida === 'MUY_ANTES') p.salidasMuyAntes++;
+    if (f.estado === 'INCOMPLETO') p.incompletos++;
+    if (f.estado === 'SIN_MARCA') p.sinMarca++;
+    porPersona.set(f.userId, p);
   }
-  return { ...conteo, porPersona: [...porPersona.values()].sort((a, b) => b.atrasos - a.atrasos || b.minutos - a.minutos || a.persona.localeCompare(b.persona)) };
+  const personas = [...porPersona.values()].sort((a, b) => b.atrasos - a.atrasos || b.minutos - a.minutos || a.persona.localeCompare(b.persona));
+  const suma = (campo: Exclude<keyof ResumenPersona, 'userId' | 'persona'>) => personas.reduce((n, p) => n + p[campo], 0);
+  return {
+    atrasos: suma('atrasos'), minutosAtraso: suma('minutos'), entradasATiempo: suma('aTiempo'), entradasMuyAntes: suma('muyAntes'),
+    salidasMuyAntes: suma('salidasMuyAntes'), incompletos: suma('incompletos'), sinMarca: suma('sinMarca'), porPersona: personas,
+  };
+}
+
+/** Filtro de días por estado. Atrasado, a tiempo y muy antes se refieren a la entrada, igual que los conteos. */
+export type FiltroDia = '' | 'ATRASADO' | 'A_TIEMPO' | 'MUY_ANTES' | 'SALIDA_MUY_ANTES' | 'SALIDA_ATRASADA' | 'INCOMPLETO' | 'SIN_MARCA';
+
+export const FILTROS_DIA: ReadonlyArray<{ id: FiltroDia; nombre: string }> = [
+  { id: '', nombre: 'Todos' },
+  { id: 'ATRASADO', nombre: 'Entrada atrasada' },
+  { id: 'A_TIEMPO', nombre: 'Entrada a tiempo' },
+  { id: 'MUY_ANTES', nombre: 'Entrada muy antes' },
+  { id: 'SALIDA_MUY_ANTES', nombre: 'Salida muy antes' },
+  { id: 'SALIDA_ATRASADA', nombre: 'Salida atrasada' },
+  { id: 'INCOMPLETO', nombre: 'Incompleto' },
+  { id: 'SIN_MARCA', nombre: 'Sin marca' },
+];
+
+export function pasaFiltroDia(f: FilaDia, filtro: FiltroDia): boolean {
+  switch (filtro) {
+    case '': return true;
+    case 'SALIDA_MUY_ANTES': return f.puntualidadSalida === 'MUY_ANTES';
+    case 'SALIDA_ATRASADA': return f.puntualidadSalida === 'ATRASADO';
+    case 'INCOMPLETO':
+    case 'SIN_MARCA': return f.estado === filtro;
+    default: return f.puntualidadEntrada === filtro;
+  }
 }
 
 /** Estados que merecen atención (los demás son normales o aún no se pueden juzgar). */

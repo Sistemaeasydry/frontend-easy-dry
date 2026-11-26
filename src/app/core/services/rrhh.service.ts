@@ -117,7 +117,7 @@ export interface TimbradaApi {
   longitud: number | null;
   precisionM: number | null;
   verificacion: Verificacion;
-  sitio: { tipo: 'AGENCIA' | 'BODEGA'; nombre: string } | null;
+  sitio: { tipo: 'AGENCIA' | 'BODEGA'; nombre: string; direccion?: string | null; latitud?: number | null; longitud?: number | null } | null;
   distanciaM: number | null;
   radioM: number | null;
 }
