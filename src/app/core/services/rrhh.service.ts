@@ -25,7 +25,7 @@ export interface TareaApi {
   fechaLimite: string | null;
   estado: EstadoTarea;
   vencida: boolean;
-  asignadoA: { id: string; nombre: string; agencia: string | null; activo: boolean };
+  asignadoA: { id: string; nombre: string; agencia: string | null; activo: boolean; departamento?: string | null; nivel?: string | null };
   asignadoPor: { id: string; nombre: string };
   respuesta: string | null;
   creadaEn: string;
@@ -163,7 +163,7 @@ export interface HorarioPersonaApi {
 /** Sábado o domingo que la persona trabaja solo esa vez (el horario semanal no cambia). */
 export interface FinDeSemanaApi { id: string; fecha: string; entrada: string; salida: string; motivo: string; hoy: boolean }
 
-export interface HorarioEquipoApi extends HorarioPersonaApi { id: string; nombre: string; rol: string; finesDeSemana: FinDeSemanaApi[] }
+export interface HorarioEquipoApi extends HorarioPersonaApi { id: string; nombre: string; rol: string; departamento?: string | null; nivel?: string | null; finesDeSemana: FinDeSemanaApi[] }
 
 export interface CambioHorarioApi {
   id: string;
@@ -187,6 +187,8 @@ export interface CambioAjusteApi {
 }
 
 export interface PersonaEquipo {
+  departamento?: string | null;
+  nivel?: string | null;
   id: string;
   nombre: string;
   rol: string;

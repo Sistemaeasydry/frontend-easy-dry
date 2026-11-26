@@ -66,6 +66,8 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
         [showBahia]="true"
         [showCliente]="true"
         [showEstado]="true"
+        [showDepartamento]="true"
+        [showNivel]="true"
         [showRol]="rolesFiltro.length > 1"
         [listaRoles]="rolesFiltro"
         [showFechas]="false"
@@ -89,8 +91,9 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
           <table class="w-full min-w-[720px] text-left text-xs">
             <thead class="bg-slate-50 text-slate-500 text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-200">
               <tr>
-                <th scope="col" class="py-3.5 px-4">{{ isCoordServiciosEspeciales ? 'Pulidor' : 'Lavador' }}</th>
+                <th scope="col" class="py-3.5 px-4">{{ veTodoElPersonal ? 'Apellidos y nombres' : (isCoordServiciosEspeciales ? 'Pulidor' : 'Lavador') }}</th>
                 <th scope="col" class="py-3.5 px-4">Rol Operativo</th>
+                <th scope="col" class="py-3.5 px-4">Nivel</th>
                 <th scope="col" class="py-3.5 px-4">Estado</th>
                 <th scope="col" class="py-3.5 px-4">Agencia Asignada</th>
                 <th scope="col" class="py-3.5 px-4">Bahía Asignada</th>
@@ -103,7 +106,7 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
             <tbody class="divide-y divide-slate-100 font-medium">
               @if (tabla.error) {
                 <tr>
-                  <td colspan="7" class="py-10 px-4">
+                  <td colspan="8" class="py-10 px-4">
                     <div role="alert" class="flex flex-col items-center gap-3 text-center">
                       <div class="estado-error">{{ tabla.error }}</div>
                       <button type="button" class="btn btn-secondary btn-sm" (click)="tabla.cargar(true)">Reintentar</button>
@@ -113,7 +116,7 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
               }
               @if (tabla.inicializada && !tabla.cargando && !tabla.error && tabla.filas.length === 0) {
                 <tr>
-                  <td colspan="7" class="py-12 text-center text-slate-500">
+                  <td colspan="8" class="py-12 text-center text-slate-500">
                     <i-lucide aria-hidden="true" name="user-x" class="w-8 h-8 mx-auto text-slate-300 mb-2"></i-lucide>
                     <p class="font-bold text-sm text-slate-600">No se encontraron {{ isCoordServiciosEspeciales ? 'pulidores' : 'lavadores' }} registrados</p>
                     <p class="text-xs text-slate-500 mt-1">Haga clic en "{{ isCoordServiciosEspeciales ? 'Registrar Pulidor' : 'Registrar Lavador' }}" para dar de alta el primer {{ isCoordServiciosEspeciales ? 'especialista' : 'colaborador' }} en el sistema.</p>
@@ -156,6 +159,15 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
                   <!-- Rol Operativo -->
                   <td class="py-3.5 px-4 font-semibold text-slate-700 text-xs">
                     {{ op.rol }}
+                  </td>
+
+                  <!-- Nivel -->
+                  <td class="py-3.5 px-4">
+                    @if (op.nivel) {
+                      <span class="px-2.5 py-1 rounded-lg text-xs font-bold border whitespace-nowrap" [ngClass]="op.nivel === 'SENIOR' ? 'bg-teal-100 text-teal-900 border-teal-300' : 'bg-sky-50 text-sky-800 border-sky-200'">{{ op.nivel === 'SENIOR' ? 'Senior' : 'Junior' }}</span>
+                    } @else {
+                      <span class="text-xs font-semibold text-amber-700 whitespace-nowrap">Sin nivel</span>
+                    }
                   </td>
 
                   <!-- Estado -->
@@ -283,29 +295,42 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
             </div>
           </div>
 
-          <!-- Nombre Completo -->
+          <!-- Apellidos y nombres -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="operadores-f1" class="block text-xs font-bold text-slate-700 uppercase mb-1">Apellidos <span class="text-rose-500">*</span></label>
+              <input id="operadores-f1" type="text" maxlength="80" [disabled]="datosBloqueados" [(ngModel)]="formOperador.apellidos" placeholder="Ej. Ramírez Loor"
+                class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-500 disabled:opacity-75 outline-none focus:ring-2 focus:ring-easydry-blue">
+            </div>
+            <div>
+              <label for="operadores-nombres" class="block text-xs font-bold text-slate-700 uppercase mb-1">Nombres <span class="text-rose-500">*</span></label>
+              <input id="operadores-nombres" type="text" maxlength="80" [disabled]="datosBloqueados" [(ngModel)]="formOperador.nombres" placeholder="Ej. Pedro José"
+                class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-500 disabled:opacity-75 outline-none focus:ring-2 focus:ring-easydry-blue">
+            </div>
+          </div>
+
           <div>
-            <label for="operadores-f1" class="block text-xs font-bold text-slate-700 uppercase mb-1">
-              Nombre Completo <span class="text-rose-500">*</span>
-            </label>
-            <input id="operadores-f1"
-              type="text"
-              [(ngModel)]="formOperador.nombre"
-              placeholder="Ej. Pedro José Ramírez"
-              class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-easydry-blue">
+            <label for="operadores-nivel" class="block text-xs font-bold text-slate-700 uppercase mb-1">Nivel <span class="text-rose-500">*</span></label>
+            <select id="operadores-nivel" [disabled]="datosBloqueados" [(ngModel)]="formOperador.nivel"
+              class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 disabled:opacity-75 outline-none focus:ring-2 focus:ring-easydry-blue">
+              <option value="">Elige Junior o Senior</option>
+              <option value="JUNIOR">Junior</option>
+              <option value="SENIOR">Senior</option>
+            </select>
           </div>
 
           <!-- Cédula y Teléfono -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label for="operadores-f2" class="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Cédula de Identidad / CI <span class="text-rose-500">*</span>
+                Cédula de Identidad / CI @if (!esEdicion) { <span class="text-rose-500">*</span> }
               </label>
               <input id="operadores-f2"
                 type="text"
+                [disabled]="datosBloqueados"
                 [(ngModel)]="formOperador.cedula"
                 placeholder="Ej. 1729384756"
-                maxlength="13"
+                maxlength="10"
                 class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-easydry-blue">
             </div>
 
@@ -376,6 +401,7 @@ import { FilterBarComponent, FilterState } from '../../shared/components/filter-
                   <option [value]="r">{{ r }}</option>
                 }
               </select>
+              @if (veTodoElPersonal) { <p class="text-[11px] text-slate-500 mt-1">Líderes, backups, auxiliares y técnicos se registran en «Usuarios»; aquí podrás verlos y editarlos.</p> }
             </div>
             }
 
@@ -832,6 +858,9 @@ export class OperadoresComponent implements OnInit, OnDestroy {
     if (estado === 'Activo') c.estado = 1;
     else if (estado === 'Inactivo') c.estado = 0;
     c.rol = this.neutro(f.rol, 'Todos') || undefined;
+    const departamento = this.neutro(f['departamento'], 'Todos');
+    c.departamento = departamento === 'Operativo' ? 'OPERADOR' : departamento === 'Administrativo' ? 'ADMINISTRACION' : undefined;
+    c.nivel = this.neutro(f['nivel'], 'Todos').toUpperCase() || undefined;
     c.regionNombre = this.neutro(f.region, 'Todas', 'TODAS') || undefined;
     c.bahiaNombre = this.neutro(f.bahia, 'Todas') || undefined;
     c.clienteNombre = this.neutro(f.marca || f.cliente, 'Todas', 'Todos') || undefined;
@@ -883,9 +912,14 @@ export class OperadoresComponent implements OnInit, OnDestroy {
     return this.isCoordServiciosEspeciales ? this.rolesOperativosPulidor : this.rolesOperativosLavador;
   }
 
+  /** Talento Humano: la pantalla muestra a todo el personal operativo (SUPER_ADMIN la ve como siempre). */
+  get veTodoElPersonal(): boolean {
+    return !this.authService.isSuperAdmin() && this.authService.puede('operadores.personal_operativo');
+  }
+
   /** Opciones del selector de rol: las de la categoría más el rol actual de quien se edita (p. ej. PULIDOR visto desde lavadores), para que llegue preseleccionado. */
   get rolesParaFormulario(): string[] {
-    const base = this.rolesOperativosDisponibles;
+    const base = this.veTodoElPersonal ? ['LAVADOR', 'PULIDOR'] : this.rolesOperativosDisponibles;
     const actual = (this.formOperador.rol || '').trim();
     return actual && !base.some(r => r.toUpperCase() === actual.toUpperCase()) ? [actual, ...base] : base;
   }
@@ -895,6 +929,7 @@ export class OperadoresComponent implements OnInit, OnDestroy {
    * no necesita el filtro; el resto elige entre los roles que la pantalla puede mostrar.
    */
   get rolesFiltro(): string[] {
+    if (this.veTodoElPersonal) return ['LAVADOR', 'LIDER', 'BACKUP', 'AUXILIAR', 'PULIDOR', 'TECNICO'];
     if (this.isCoordServiciosEspeciales) return [];
     if (this.esLider) return ['LAVADOR', 'PULIDOR'];
     if (this.authService.getCurrentUser()?.ambito === 'AGENCIA') return [];
@@ -917,7 +952,9 @@ export class OperadoresComponent implements OnInit, OnDestroy {
   }
 
   formOperador = {
-    nombre: '',
+    apellidos: '',
+    nombres: '',
+    nivel: '' as '' | 'JUNIOR' | 'SENIOR',
     cedula: '',
     telefono: '',
     rol: 'LAVADOR',
@@ -1073,7 +1110,9 @@ export class OperadoresComponent implements OnInit, OnDestroy {
       const defaultRol = this.isCoordServiciosEspeciales ? 'PULIDOR' : 'LAVADOR';
 
       this.formOperador = {
-        nombre: '',
+        apellidos: '',
+        nombres: '',
+        nivel: '',
         cedula: '',
         telefono: '',
         rol: defaultRol,
@@ -1109,7 +1148,9 @@ export class OperadoresComponent implements OnInit, OnDestroy {
       const suc = this.sucursales.find(s => s.nombre === op.sucursal || String(s.id) === String(op.sucursalId));
 
       this.formOperador = {
-        nombre: op.nombre,
+        apellidos: op.apellidos ?? '',
+        nombres: op.nombres ?? '',
+        nivel: op.nivel || '',
         cedula: op.cedula,
         telefono: op.telefono || '',
         rol: op.rol || 'LAVADOR',
@@ -1185,7 +1226,7 @@ export class OperadoresComponent implements OnInit, OnDestroy {
         bahiaNombre: b.nombre,
         operadoresActualesNombres: activos.map(op => op.nombre).join(', ') || (b.operadorAsignado ?? ''),
         maxLavadoresPorBahia: max,
-        nuevoOperadorNombre: this.formOperador.nombre?.trim() || 'Nuevo Lavador',
+        nuevoOperadorNombre: `${this.formOperador.apellidos} ${this.formOperador.nombres}`.trim() || 'Nuevo Lavador',
         contexto: 'crear'
       };
     } else if (this.conflictoAsignacion?.contexto === 'crear') {
@@ -1199,15 +1240,21 @@ export class OperadoresComponent implements OnInit, OnDestroy {
   }
 
   guardarOperador(): void {
-    if (!this.formOperador.nombre?.trim()) {
-      this.toastService.warning('Campo Obligatorio', 'Por favor ingrese el nombre completo del lavador.');
+    // Sin permiso de editar datos esos campos van bloqueados: solo se valida lo que se puede cambiar.
+    if (!this.datosBloqueados && (!this.formOperador.apellidos.trim() || !this.formOperador.nombres.trim())) {
+      this.toastService.warning('Campo Obligatorio', 'Escribe los apellidos y los nombres.');
       return;
     }
-    if (!this.formOperador.cedula?.trim()) {
+    if (!this.datosBloqueados && !this.formOperador.nivel) {
+      this.toastService.warning('Campo Obligatorio', 'Elige si es Junior o Senior.');
+      return;
+    }
+    if (!this.esEdicion && !this.formOperador.cedula?.trim()) {
       this.toastService.warning('Campo Obligatorio', 'Por favor ingrese la cédula de identidad del operador.');
       return;
     }
-    if (!this.formOperador.sucursalId && !this.formOperador.sucursalNombre) {
+    // Al editar a quien no tiene agencia (técnico, pulidor móvil) no se le exige una.
+    if (!this.formOperador.sucursalId && (!this.esEdicion || !!this.sucursalOriginalId)) {
       this.toastService.warning('Campo Obligatorio', 'Por favor seleccione la agencia de asignación.');
       return;
     }
@@ -1256,9 +1303,12 @@ export class OperadoresComponent implements OnInit, OnDestroy {
       const datos = this.canEditarDatos;
       this.operadorService.actualizarOperador({
         id: this.operadorEnEdicionId,
-        nombre: datos ? this.formOperador.nombre.trim() : '',
+        nombre: '',
+        apellidos: datos ? this.formOperador.apellidos.trim() : undefined,
+        nombres: datos ? this.formOperador.nombres.trim() : undefined,
+        nivel: datos ? this.formOperador.nivel : undefined,
         cedula: datos ? this.formOperador.cedula.trim() : '',
-        telefono: datos ? (this.formOperador.telefono?.trim() || '') : '',
+        telefono: datos ? (this.formOperador.telefono?.trim() || '') : undefined,
         rol: '',
         sucursal: datos ? (suc ? suc.nombre : this.formOperador.sucursalNombre) : '',
         sucursalId: datos ? (suc ? suc.id : this.formOperador.sucursalId) : '',
@@ -1284,7 +1334,9 @@ export class OperadoresComponent implements OnInit, OnDestroy {
       });
     } else {
       this.operadorService.crearOperador({
-        nombre: this.formOperador.nombre.trim(),
+        apellidos: this.formOperador.apellidos.trim(),
+        nombres: this.formOperador.nombres.trim(),
+        nivel: this.formOperador.nivel,
         cedula: this.formOperador.cedula.trim(),
         password: this.formOperador.password.trim(),
         passwordConfirmacion: this.confirmarPassword.trim() || undefined,

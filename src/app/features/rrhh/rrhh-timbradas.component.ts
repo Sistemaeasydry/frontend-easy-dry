@@ -7,6 +7,7 @@ import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AuthService } from '../../core/services/auth.service';
 import { StorageUploadService } from '../../core/services/storage-upload.service';
 import { AjusteHorarioApi, EstadoTimbrada, EvaluacionDiaApi, HorarioPersonaApi, PersonaEquipo, ResultadoTimbrada, RrhhService, TimbradaApi } from '../../core/services/rrhh.service';
+import { FiltroPersonal, RrhhFiltroPersonalComponent, pasaFiltroPersonal, sinFiltroPersonal } from './rrhh-filtro-personal.component';
 import { ESTADOS_NOVEDAD, ETIQUETA_ESTADO_DIA, ETIQUETA_VERIFICACION, FilaDia, ZONA_ECUADOR, filasDelRango, resumenSemana, textoMinutos } from './rrhh.modelos';
 import { RrhhHorariosComponent } from './rrhh-horarios.component';
 import { exportarCumplimientoExcel, exportarCumplimientoPdf } from './rrhh-horarios-export';
@@ -35,7 +36,7 @@ const aDia = (d: Date): string => {
 @Component({
   selector: 'app-rrhh-timbradas',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule, ModalComponent, RrhhHorariosComponent],
+  imports: [RrhhFiltroPersonalComponent, CommonModule, FormsModule, LucideAngularModule, ModalComponent, RrhhHorariosComponent],
   template: `
     <div class="space-y-5 animate-fade-in">
       <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-easydry">
@@ -175,11 +176,12 @@ const aDia = (d: Date): string => {
                 <label class="field-label" for="rs-hasta">Hasta</label>
                 <input id="rs-hasta" type="date" class="field" [(ngModel)]="hasta" [min]="desde">
               </div>
+              <app-rrhh-filtro-personal [filtro]="filtroPersonal" (filtroChange)="filtroPersonal = $event"></app-rrhh-filtro-personal>
               <div>
                 <label class="field-label" for="rs-op">Persona</label>
                 <select id="rs-op" class="field" [(ngModel)]="filtroPersona">
                   <option value="">Todas</option>
-                  @for (p of personas; track p.id) { <option [value]="p.id">{{ p.nombre }}</option> }
+                  @for (p of personasFiltradas; track p.id) { <option [value]="p.id">{{ p.nombre }}</option> }
                 </select>
               </div>
               <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-700 min-h-11">
@@ -272,6 +274,7 @@ export class RrhhTimbradasComponent implements OnInit, OnDestroy {
   hasta = aDia(new Date());
   filtroPersona = '';
   soloNovedades = false;
+  filtroPersonal: FiltroPersonal = sinFiltroPersonal();
   cargandoEquipo = false;
   marcasEquipo: TimbradaApi[] = [];
   evaluacionEquipo: EvaluacionDiaApi[] = [];
@@ -301,10 +304,15 @@ export class RrhhTimbradasComponent implements OnInit, OnDestroy {
     return filasDelRango(this.misEvaluacion, this.misMarcas, new Map([[yo, this.nombreMio]])).filter((f) => f.estado !== 'SIN_HORARIO');
   }
 
+  get personasFiltradas(): PersonaEquipo[] {
+    return this.personas.filter((p) => pasaFiltroPersonal(p, this.filtroPersonal));
+  }
+
   get filasEquipo(): FilaDia[] {
+    const visibles = new Set(this.personasFiltradas.map((p) => p.id));
     const nombres = new Map(this.personas.map((p) => [p.id, p.nombre] as const));
     return filasDelRango(this.evaluacionEquipo, this.marcasEquipo, nombres)
-      .filter((f) => f.estado !== 'SIN_HORARIO')
+      .filter((f) => f.estado !== 'SIN_HORARIO' && visibles.has(f.userId))
       .filter((f) => !this.soloNovedades || ESTADOS_NOVEDAD.has(f.estado));
   }
 

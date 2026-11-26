@@ -51,6 +51,7 @@ const AMBITOS_INFO: AmbitoInfo[] = [
 const COLUMNAS_USUARIOS: TableColumn[] = [
   { key: 'nombre', label: 'Usuario', sortable: true, type: 'custom' },
   { key: 'rol', label: 'Rol Asignado', sortable: true, type: 'custom' },
+  { key: 'nivel', label: 'Nivel', type: 'custom' },
   { key: 'agencia', label: 'Agencia o Región', sortable: true, type: 'custom' },
   { key: 'email', label: 'Correo Electrónico', sortable: true, type: 'custom' },
   { key: 'telefono', label: 'Teléfono', type: 'custom' },
@@ -121,6 +122,8 @@ const COLUMNAS_ROLES: TableColumn[] = [
         <div class="space-y-6">
           <!-- Global Filter Bar con Filtro de Rol y Cascada -->
           <app-filter-bar 
+            [showDepartamento]="true"
+            [showNivel]="true"
             [showRol]="true"
             [listaRoles]="rolesParaFiltro"
             [showRegion]="true"
@@ -229,6 +232,12 @@ const COLUMNAS_ROLES: TableColumn[] = [
                   Rol: {{ filtrosGlobales.rol }}
                   <button type="button" aria-label="Quitar filtro" (click)="removerFiltro('rol')" class="hover:text-purple-950 cursor-pointer"><i-lucide aria-hidden="true" name="x" class="w-3 h-3"></i-lucide></button>
                 </span>
+              }
+              @if (filtrosGlobales['departamento'] && filtrosGlobales['departamento'] !== 'Todos') {
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800 font-bold border border-indigo-200">Departamento: {{ filtrosGlobales['departamento'] }}</span>
+              }
+              @if (filtrosGlobales['nivel'] && filtrosGlobales['nivel'] !== 'Todos') {
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-100 text-teal-800 font-bold border border-teal-200">Nivel: {{ filtrosGlobales['nivel'] }}</span>
               }
               @if (filtrosGlobales.region && filtrosGlobales.region !== 'Todas') {
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 font-bold border border-blue-200">
@@ -349,6 +358,16 @@ const COLUMNAS_ROLES: TableColumn[] = [
                   [ngClass]="getRolBadgeClass(u.rol)">
                   {{ u.rol }}
                 </span>
+              </ng-template>
+
+              <ng-template appCell="nivel" let-u>
+                @if (u.nivel) {
+                  <span class="px-2.5 py-1 rounded-lg text-xs font-bold border whitespace-nowrap" [ngClass]="u.nivel === 'SENIOR' ? 'bg-teal-100 text-teal-900 border-teal-300' : 'bg-sky-50 text-sky-800 border-sky-200'">{{ u.nivel === 'SENIOR' ? 'Senior' : 'Junior' }}</span>
+                } @else if (u.departamento === 'OPERADOR') {
+                  <span class="text-xs font-semibold text-amber-700 whitespace-nowrap">Sin nivel</span>
+                } @else {
+                  <span class="text-xs text-slate-400" title="Solo el personal operativo lleva nivel">—</span>
+                }
               </ng-template>
 
               <ng-template appCell="agencia" let-u>
@@ -684,14 +703,23 @@ const COLUMNAS_ROLES: TableColumn[] = [
         <form (ngSubmit)="guardarUsuario()" class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
+              <label for="usuarios-f2" class="block text-xs font-bold text-slate-700 uppercase mb-1">Apellidos</label>
+              <input id="usuarios-f2"
+                type="text"
+                [(ngModel)]="usuarioForm.apellido"
+                name="apellido"
+                placeholder="ej. Moposita Chango"
+                class="w-full p-2.5 border border-slate-200 rounded-xl text-sm focus:border-easydry-blue focus:ring-2 focus:ring-easydry-blue/20 outline-none">
+            </div>
+            <div>
               <label for="usuarios-f1" class="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Nombre <span class="text-rose-500">*</span>
+                Nombres <span class="text-rose-500">*</span>
               </label>
               <input id="usuarios-f1"
                 type="text"
                 [(ngModel)]="usuarioForm.nombre"
                 name="nombre"
-                placeholder="ej. Stalyn"
+                placeholder="ej. Stalyn Andrés"
                 class="w-full p-2.5 border rounded-xl text-sm transition-all outline-none"
                 [ngClass]="nombreInvalido ? 'border-rose-500 bg-rose-50/20 ring-2 ring-rose-200' : 'border-slate-200 focus:border-easydry-blue focus:ring-2 focus:ring-easydry-blue/20'"
                 required>
@@ -702,16 +730,18 @@ const COLUMNAS_ROLES: TableColumn[] = [
                 </p>
               }
             </div>
-            <div>
-              <label for="usuarios-f2" class="block text-xs font-bold text-slate-700 uppercase mb-1">Apellido</label>
-              <input id="usuarios-f2"
-                type="text"
-                [(ngModel)]="usuarioForm.apellido"
-                name="apellido"
-                placeholder="ej. Moposita"
-                class="w-full p-2.5 border border-slate-200 rounded-xl text-sm focus:border-easydry-blue focus:ring-2 focus:ring-easydry-blue/20 outline-none">
-            </div>
           </div>
+
+          @if (rolFormOperativo) {
+            <div>
+              <label for="usuarios-nivel" class="block text-xs font-bold text-slate-700 uppercase mb-1">Nivel (personal operativo) <span class="text-rose-500">*</span></label>
+              <select id="usuarios-nivel" name="nivel" [(ngModel)]="usuarioForm.nivel" class="w-full p-2.5 border rounded-xl text-sm font-semibold bg-white" [ngClass]="nivelInvalido ? 'border-rose-500 ring-2 ring-rose-200' : 'border-slate-200 focus:border-easydry-blue'">
+                <option value="">Elige Junior o Senior</option>
+                <option value="JUNIOR">Junior</option>
+                <option value="SENIOR">Senior</option>
+              </select>
+            </div>
+          }
 
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -1511,6 +1541,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
   modalUsuarioOpen = false;
   editandoUsuario: Usuario | null = null;
   usuarioForm: {
+    nivel: '' | 'JUNIOR' | 'SENIOR';
     nombre: string;
     apellido: string;
     rol: string;
@@ -1533,6 +1564,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
     /** Motivo del cambio de agencia (se pide solo al editar y cambiar la agencia). */
     motivoCambioAgencia?: string;
   } = {
+    nivel: '',
     nombre: '',
     apellido: '',
     rol: 'Aprobador',
@@ -1601,6 +1633,16 @@ export class UsuariosComponent implements OnInit, OnDestroy {
     const pass = this.usuarioForm.password?.trim();
     const confirm = this.usuarioForm.confirmPassword?.trim();
     return !confirm || pass !== confirm;
+  }
+
+  /** El departamento sale de la categoría del rol elegido; los operativos llevan nivel. */
+  get rolFormOperativo(): boolean {
+    const rol = this.roles.find((r) => String(r.id) === String(this.usuarioForm.roleId));
+    return rol?.categoria === 'OPERADOR';
+  }
+
+  get nivelInvalido(): boolean {
+    return this.usuarioFormSubmitted && this.rolFormOperativo && !this.usuarioForm.nivel;
   }
 
   get passwordsMatch(): boolean {
@@ -2036,8 +2078,9 @@ export class UsuariosComponent implements OnInit, OnDestroy {
   // -------------------------------------------------------------
   get rolesParaFiltro(): string[] {
     const set = new Set<string>();
-    this.rolesVisibles.forEach(r => { if (r.nombre) set.add(r.nombre); });
-    this.usuariosVisibles.forEach(u => { if (u.rol) set.add(u.rol); });
+    const departamento = this.departamentoFiltro();
+    this.rolesVisibles.forEach(r => { if (r.nombre && (!departamento || r.categoria === departamento)) set.add(r.nombre); });
+    if (!departamento) this.usuariosVisibles.forEach(u => { if (u.rol) set.add(u.rol); });
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
   }
 
@@ -2078,6 +2121,8 @@ export class UsuariosComponent implements OnInit, OnDestroy {
   get hayFiltrosActivos(): boolean {
     return (
       (!!this.filtrosGlobales.rol && this.filtrosGlobales.rol !== 'Todos') ||
+      !!this.departamentoFiltro() ||
+      !!this.nivelFiltro() ||
       (!!this.filtrosGlobales.region && this.filtrosGlobales.region !== 'Todas') ||
       (!!this.filtrosGlobales.sucursal && this.filtrosGlobales.sucursal !== 'Todas') ||
       (!!this.filtrosGlobales.cliente && this.filtrosGlobales.cliente !== 'Todas') ||
@@ -2099,6 +2144,8 @@ export class UsuariosComponent implements OnInit, OnDestroy {
       bahia: 'Todas',
       estado: 'Todos',
       rol: 'Todos',
+      departamento: 'Todos',
+      nivel: 'Todos',
       fecha: 'Mes',
       fechaInicio: '',
       fechaFin: '',
@@ -2201,7 +2248,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
 
   private huellaFiltros(f: FilterState | undefined): string {
     if (!f) return '';
-    return JSON.stringify([f.rol, f.region, f.sucursal, f.cliente, f.marca, f.estado]);
+    return JSON.stringify([f.rol, f['departamento'], f['nivel'], f.region, f.sucursal, f.cliente, f.marca, f.estado]);
   }
 
   /** Todo cambio de filtro, píldora o texto vuelve a la primera página. */
@@ -2221,6 +2268,16 @@ export class UsuariosComponent implements OnInit, OnDestroy {
   private neutro(v: string | undefined | null, ...neutros: string[]): string {
     const t = (v ?? '').trim();
     return !t || neutros.includes(t) ? '' : t;
+  }
+
+  private departamentoFiltro(): 'OPERADOR' | 'ADMINISTRACION' | undefined {
+    const d = this.filtrosGlobales['departamento'];
+    return d === 'Operativo' ? 'OPERADOR' : d === 'Administrativo' ? 'ADMINISTRACION' : undefined;
+  }
+
+  private nivelFiltro(): 'JUNIOR' | 'SENIOR' | undefined {
+    const n = this.filtrosGlobales['nivel'];
+    return n === 'Junior' ? 'JUNIOR' : n === 'Senior' ? 'SENIOR' : undefined;
   }
 
   private agenciaIdFiltro(): string {
@@ -2271,6 +2328,8 @@ export class UsuariosComponent implements OnInit, OnDestroy {
       sortOrder: this.sortOrderU,
       search: this.busquedaAplicada,
       rolNombre: this.rolCodigosFiltro() || undefined,
+      departamento: this.departamentoFiltro(),
+      nivel: this.nivelFiltro(),
       agenciaId: this.agenciaIdFiltro() || undefined,
       regionId: this.regionIdFiltro() || undefined,
       clienteId: this.clienteIdFiltro() || undefined,
@@ -2393,6 +2452,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
       telefono: '',
       cedula: '',
       ciudad: '',
+      nivel: '',
       password: '',
       confirmPassword: '',
       cambiarPassword: true,
@@ -2445,6 +2505,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
       telefono: u.telefono || '',
       cedula: u.cedula || '',
       ciudad: u.ciudad || '',
+      nivel: u.nivel || '',
       password: '',
       confirmPassword: '',
       cambiarPassword: false,
@@ -2675,7 +2736,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
   guardarUsuario() {
     if (this.guardandoUsuario) return;
     this.usuarioFormSubmitted = true;
-    if (this.nombreInvalido || this.emailInvalido || this.telefonoInvalido || this.cedulaInvalida || this.passwordInvalido || this.confirmPasswordInvalido) {
+    if (this.nombreInvalido || this.emailInvalido || this.telefonoInvalido || this.cedulaInvalida || this.nivelInvalido || this.passwordInvalido || this.confirmPasswordInvalido) {
       this.toastService.warning('Campos Requeridos', 'Por favor complete los campos obligatorios señalados en rojo.');
       return;
     }
@@ -2858,7 +2919,8 @@ export class UsuariosComponent implements OnInit, OnDestroy {
         ...(this.usuarioForm.cambiarPassword && this.usuarioForm.password?.trim()
           ? { password: this.usuarioForm.password.trim(), passwordConfirmacion: this.usuarioForm.confirmPassword?.trim() }
           : {}),
-        roleId: roleIdToSend || (this.editandoUsuario as any).roleId || undefined
+        roleId: roleIdToSend || (this.editandoUsuario as any).roleId || undefined,
+        nivel: this.rolFormOperativo ? this.usuarioForm.nivel : ''
       };
 
       // Si la agencia cambia porque el rol cambió (p. ej. a uno de alcance global, que no muestra el campo de agencia), el motivo es ese.
@@ -2950,6 +3012,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
         telefono: this.usuarioForm.telefono.trim(),
         cedula: this.usuarioForm.cedula.trim(),
         ciudad: this.usuarioForm.ciudad.trim(),
+        nivel: this.rolFormOperativo ? this.usuarioForm.nivel : '',
         fechaAsignacion: new Date().toISOString().split('T')[0],
         avatar: '',
         modalidadPulidor: isPulidor ? modalidad.modalidadPulidor : undefined,
@@ -3008,6 +3071,10 @@ export class UsuariosComponent implements OnInit, OnDestroy {
   /** Alguna acción sobre roles: con solo «ver» el editor se abre en lectura. */
   get puedeGestionarRoles(): boolean { return this.puedeCrearRol || this.puedeEditarRol || this.puedeEliminarRol; }
 
+  private get actorEsAdministrador(): boolean {
+    return this.authService.isSuperAdmin() || this.authService.puede('funcion.administrador');
+  }
+
   get puedeCrearUsuario(): boolean { return this.authService.puede('usuarios.usuarios.crear'); }
   get puedeEditarUsuario(): boolean { return this.authService.puede('usuarios.usuarios.editar'); }
   get puedeEstadoUsuario(): boolean { return this.authService.puede('usuarios.usuarios.estado'); }
@@ -3024,6 +3091,7 @@ export class UsuariosComponent implements OnInit, OnDestroy {
   }
 
   puedeGestionarFilaUsuario(usuario: Usuario): boolean {
+    if (!this.actorEsAdministrador && this.funcionesDeNombre(usuario.rolNombre || usuario.rol).has(FUNCION.ADMINISTRADOR)) return false;
     if (this.puedeEditarUsuario) return true;
     const regionActor = this.authService.currentUserValue?.regionId;
     return this.puedeGestionarBackups &&

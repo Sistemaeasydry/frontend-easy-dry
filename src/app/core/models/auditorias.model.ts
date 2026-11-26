@@ -96,8 +96,6 @@ export interface Novedad {
   area: string;
   fotos: string[];
   registradaEn?: string;
-  /** RRHH: persona que recibe una tarea con esta novedad al guardar el informe de forma definitiva (opcional; sin responsable no hay tarea). */
-  responsableId?: string;
 }
 
 export interface Actividad {
@@ -120,6 +118,8 @@ export interface PlanAccion {
   observaciones: string;
   evidenciaCumplimiento: string[];
   completadoEn?: string | null;
+  /** RRHH: persona que recibe una tarea con este plan al guardar el informe de forma definitiva (opcional; sin responsable no hay tarea). */
+  responsableId?: string;
 }
 
 export interface HistorialInforme {

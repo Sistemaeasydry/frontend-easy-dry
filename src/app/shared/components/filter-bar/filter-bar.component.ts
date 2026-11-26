@@ -239,6 +239,34 @@ export interface FilterState {
         </div>
       }
 
+      <!-- Departamento: categoría del rol -->
+      @if (showDepartamento) {
+        <div class="flex-1 min-w-[140px] max-w-full">
+          <label [attr.for]="uid + '-dep'" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <i-lucide name="users" class="w-3.5 h-3.5 text-easydry-blue" aria-hidden="true"></i-lucide> Departamento
+          </label>
+          <select [id]="uid + '-dep'" [(ngModel)]="filters['departamento']" (change)="emitFilters()" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl pl-3 py-2 focus:ring-2 focus:ring-easydry-blue transition-colors select-chevron font-semibold cursor-pointer">
+            <option value="Todos">Todos</option>
+            <option value="Operativo">Operativo</option>
+            <option value="Administrativo">Administrativo</option>
+          </select>
+        </div>
+      }
+
+      <!-- Nivel del personal operativo -->
+      @if (showNivel) {
+        <div class="flex-1 min-w-[120px] max-w-full">
+          <label [attr.for]="uid + '-niv'" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <i-lucide name="award" class="w-3.5 h-3.5 text-easydry-blue" aria-hidden="true"></i-lucide> Nivel
+          </label>
+          <select [id]="uid + '-niv'" [(ngModel)]="filters['nivel']" (change)="emitFilters()" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl pl-3 py-2 focus:ring-2 focus:ring-easydry-blue transition-colors select-chevron font-semibold cursor-pointer">
+            <option value="Todos">Todos</option>
+            <option value="Junior">Junior</option>
+            <option value="Senior">Senior</option>
+          </select>
+        </div>
+      }
+
       <!-- Rol -->
       @if (showRol) {
         <div class="flex-1 min-w-[140px] max-w-full">
@@ -327,6 +355,8 @@ export class FilterBarComponent implements OnInit {
   @Input() showBahia = false;
   @Input() showEstado = false;
   @Input() showRol = false;
+  @Input() showDepartamento = false;
+  @Input() showNivel = false;
   @Input() showFechas = true;
   @Input() showBusqueda = false;
 
@@ -437,6 +467,8 @@ export class FilterBarComponent implements OnInit {
     bahia: 'Todas',
     estado: 'Todos',
     rol: 'Todos',
+    departamento: 'Todos',
+    nivel: 'Todos',
     fecha: 'Mes',
     fechaInicio: '',
     fechaFin: '',
@@ -659,6 +691,8 @@ export class FilterBarComponent implements OnInit {
       bahia: 'Todas',
       estado: 'Todos',
       rol: 'Todos',
+      departamento: 'Todos',
+      nivel: 'Todos',
       fecha: this.modoFechas === 'rango' ? 'Todas las fechas' : 'Mes',
       fechaInicio: '',
       fechaFin: '',

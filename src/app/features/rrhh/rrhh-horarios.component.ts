@@ -6,6 +6,7 @@ import { ToastService } from '../../shared/services/toast.service';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AuthService } from '../../core/services/auth.service';
 import { AjusteHorarioApi, CambioAjusteApi, CambioHorarioApi, DiaHorario, HorarioEquipoApi, RrhhService } from '../../core/services/rrhh.service';
+import { FiltroPersonal, RrhhFiltroPersonalComponent, pasaFiltroPersonal, sinFiltroPersonal } from './rrhh-filtro-personal.component';
 import { NOMBRES_DIA, copiarSemana, etiquetaDia, problemaDeSemana, proximosFinesDeSemana, resumenSemana, semanasIguales } from './rrhh.modelos';
 
 const mensajeDe = (e: unknown, defecto: string): string => {
@@ -24,7 +25,7 @@ const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).t
 @Component({
   selector: 'app-rrhh-horarios',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule, ModalComponent],
+  imports: [RrhhFiltroPersonalComponent, CommonModule, FormsModule, LucideAngularModule, ModalComponent],
   template: `
     <section class="bg-white rounded-2xl border border-slate-100 shadow-easydry p-5 space-y-4" aria-label="Horarios del personal">
       <div class="flex flex-wrap items-end justify-between gap-3">
@@ -38,6 +39,7 @@ const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).t
           }
         </div>
         <div class="flex flex-wrap items-end gap-3">
+          <app-rrhh-filtro-personal [filtro]="filtroPersonal" (filtroChange)="filtroPersonal = $event"></app-rrhh-filtro-personal>
           <div>
             <label class="field-label" for="hor-buscar">Buscar</label>
             <input id="hor-buscar" type="search" class="field" [(ngModel)]="busqueda" placeholder="Nombre o rol">
@@ -246,6 +248,7 @@ export class RrhhHorariosComponent implements OnInit {
   personas: HorarioEquipoApi[] = [];
   ajuste: AjusteHorarioApi | null = null;
   busqueda = '';
+  filtroPersonal: FiltroPersonal = sinFiltroPersonal();
   cargando = false;
 
   puedeEditar = false;
@@ -281,7 +284,7 @@ export class RrhhHorariosComponent implements OnInit {
 
   get visibles(): HorarioEquipoApi[] {
     const q = this.busqueda.trim().toLowerCase();
-    return q ? this.personas.filter((p) => `${p.nombre} ${p.rol}`.toLowerCase().includes(q)) : this.personas;
+    return this.personas.filter((p) => pasaFiltroPersonal(p, this.filtroPersonal) && (!q || `${p.nombre} ${p.rol}`.toLowerCase().includes(q)));
   }
 
   cargar(): void {

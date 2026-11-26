@@ -7,6 +7,7 @@ import { ToastService } from '../../shared/services/toast.service';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AuthService } from '../../core/services/auth.service';
 import { EstadoTarea, PersonaAsignable, RrhhService, TareaApi } from '../../core/services/rrhh.service';
+import { FiltroPersonal, RrhhFiltroPersonalComponent, pasaFiltroPersonal, sinFiltroPersonal } from './rrhh-filtro-personal.component';
 import { AdjuntoElegido, RrhhAdjuntosComponent } from './rrhh-adjuntos.component';
 import { ESTADOS_TAREA, ETIQUETA_EVENTO, MAX_ADJUNTOS, ZONA_ECUADOR } from './rrhh.modelos';
 
@@ -26,7 +27,7 @@ const mensajeDe = (e: unknown, defecto: string): string => {
 @Component({
   selector: 'app-rrhh-tareas',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, LucideAngularModule, ModalComponent, RrhhAdjuntosComponent],
+  imports: [RrhhFiltroPersonalComponent, CommonModule, FormsModule, RouterLink, LucideAngularModule, ModalComponent, RrhhAdjuntosComponent],
   template: `
     <div class="space-y-5 animate-fade-in">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-easydry">
@@ -72,12 +73,13 @@ const mensajeDe = (e: unknown, defecto: string): string => {
       </div>
 
       <section class="space-y-3" aria-label="Lista de tareas">
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-easydry p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-easydry p-4 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <div>
             <label class="field-label" for="rr-buscar">Buscar</label>
             <input id="rr-buscar" class="field" [(ngModel)]="busqueda" placeholder="Título o descripción…" autocomplete="off">
           </div>
           @if (pestana === 'asignadas') {
+            <app-rrhh-filtro-personal [filtro]="filtroPersonal" (filtroChange)="cambiarFiltroPersonal($event)"></app-rrhh-filtro-personal>
             <div>
               <label class="field-label" for="rr-op">Responsable</label>
               <select id="rr-op" class="field" [(ngModel)]="filtroPersona">
@@ -263,7 +265,7 @@ const mensajeDe = (e: unknown, defecto: string): string => {
               <span class="text-xs text-slate-500">{{ detalle.numero }} · Para {{ detalle.asignadoA.nombre }}@if (detalle.asignadoA.agencia) { · {{ detalle.asignadoA.agencia }} } · Asignada por {{ detalle.asignadoPor.nombre }}</span>
             </div>
             @if (detalle.origen) {
-              <p class="rounded-lg border border-violet-200 bg-violet-50 p-2.5 text-xs text-violet-900">Nació de una novedad del informe @if (detalle.origen.numero) { <a [routerLink]="['/informes-inspeccion', detalle.origen.informeId]" class="font-bold underline" (click)="detalle = null">{{ detalle.origen.numero }}</a> }.</p>
+              <p class="rounded-lg border border-violet-200 bg-violet-50 p-2.5 text-xs text-violet-900">Nació del informe @if (detalle.origen.numero) { <a [routerLink]="['/informes-inspeccion', detalle.origen.informeId]" class="font-bold underline" (click)="detalle = null">{{ detalle.origen.numero }}</a> }.</p>
             }
             <p class="whitespace-pre-line text-slate-700">{{ detalle.descripcion }}</p>
 
@@ -338,6 +340,7 @@ export class RrhhTareasComponent implements OnInit {
 
   busqueda = '';
   filtroPersona = '';
+  filtroPersonal: FiltroPersonal = sinFiltroPersonal();
   filtroEstado: FiltroEstado = '';
 
   nueva = { abierta: false, asignadoAId: '', titulo: '', descripcion: '', fechaLimite: '', adjuntos: [] as AdjuntoElegido[], ocupado: false };
@@ -357,11 +360,11 @@ export class RrhhTareasComponent implements OnInit {
   puede(codigo: string): boolean { return this.auth.puede(codigo); }
 
   ngOnInit(): void {
-    // Un administrador no recibe tareas: solo asigna y revisa.
     const esAdmin = this.puede('funcion.administrador');
-    this.verMias = this.puede('rrhh.tareas.propias') && !esAdmin;
+    this.verMias = this.puede('rrhh.tareas.propias');
     this.verAsignadas = this.puede('rrhh.tareas.asignar');
-    this.pestana = this.verMias ? 'mias' : 'asignadas';
+    // Un administrador sobre todo asigna y revisa: abre en «asignadas».
+    this.pestana = this.verMias && !(esAdmin && this.verAsignadas) ? 'mias' : 'asignadas';
     this.cargar();
     const id = this.ruta.snapshot.paramMap.get('tarea');
     if (id) this.abrirPorId(id);
@@ -381,6 +384,7 @@ export class RrhhTareasComponent implements OnInit {
     this.pestana = p;
     this.filtroEstado = '';
     this.filtroPersona = '';
+    this.filtroPersonal = sinFiltroPersonal();
   }
 
   cargar(): void {
@@ -397,11 +401,19 @@ export class RrhhTareasComponent implements OnInit {
     if (pendientes === 0) this.cargando = false;
   }
 
-  private get lista(): TareaApi[] { return this.pestana === 'mias' ? this.mias : this.asignadas; }
+  /** En «asignadas», el departamento y el nivel del responsable acotan la lista y también las tarjetas. */
+  private get lista(): TareaApi[] {
+    return this.pestana === 'mias' ? this.mias : this.asignadas.filter((t) => pasaFiltroPersonal(t.asignadoA, this.filtroPersonal));
+  }
+
+  cambiarFiltroPersonal(filtro: FiltroPersonal): void {
+    this.filtroPersonal = filtro;
+    this.filtroPersona = '';
+  }
 
   get responsables(): { id: string; nombre: string }[] {
     const mapa = new Map<string, string>();
-    for (const t of this.asignadas) mapa.set(t.asignadoA.id, t.asignadoA.nombre);
+    for (const t of this.asignadas.filter((x) => pasaFiltroPersonal(x.asignadoA, this.filtroPersonal))) mapa.set(t.asignadoA.id, t.asignadoA.nombre);
     return [...mapa].map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre));
   }
 
