@@ -7,7 +7,8 @@ import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AuthService } from '../../core/services/auth.service';
 import { AjusteHorarioApi, CambioAjusteApi, CambioHorarioApi, DiaHorario, HorarioEquipoApi, RrhhService } from '../../core/services/rrhh.service';
 import { FiltroPersonal, RrhhFiltroPersonalComponent, pasaFiltroPersonal, sinFiltroPersonal } from './rrhh-filtro-personal.component';
-import { NOMBRES_DIA, copiarSemana, etiquetaDia, problemaDeSemana, proximosFinesDeSemana, resumenSemana, semanasIguales } from './rrhh.modelos';
+import { MarcaElegida, RrhhHistorialComponent, RrhhMarcaDetalleComponent } from './rrhh-marcas.component';
+import { FilaDia, NOMBRES_DIA, copiarSemana, filasDelRango, etiquetaDia, problemaDeSemana, proximosFinesDeSemana, resumenSemana, semanasIguales } from './rrhh.modelos';
 
 const mensajeDe = (e: unknown, defecto: string): string => {
   const m = (e as { error?: { message?: string | string[] } } | null)?.error?.message;
@@ -16,6 +17,8 @@ const mensajeDe = (e: unknown, defecto: string): string => {
 
 /** Mañana en Ecuador (AAAA-MM-DD): el día desde el que rige cualquier cambio de horario. */
 const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).toISOString().slice(0, 10);
+/** Un día de Ecuador (AAAA-MM-DD) de hace `dias` días. */
+const haceDias = (dias: number): string => new Date(Date.now() - 5 * 3_600_000 - dias * 86_400_000).toISOString().slice(0, 10);
 
 /**
  * RRHH · Horarios del personal. Cada persona tiene un horario por día de la semana (por defecto 08:00 a 17:00 los siete días) con un
@@ -25,7 +28,7 @@ const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).t
 @Component({
   selector: 'app-rrhh-horarios',
   standalone: true,
-  imports: [RrhhFiltroPersonalComponent, CommonModule, FormsModule, LucideAngularModule, ModalComponent],
+  imports: [RrhhHistorialComponent, RrhhMarcaDetalleComponent, RrhhFiltroPersonalComponent, CommonModule, FormsModule, LucideAngularModule, ModalComponent],
   template: `
     <section class="bg-white rounded-2xl border border-slate-100 shadow-easydry p-5 space-y-4" aria-label="Horarios del personal">
       <div class="flex flex-wrap items-end justify-between gap-3">
@@ -175,8 +178,25 @@ const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).t
     </app-modal>
 
     <!-- Historial de una persona -->
-    <app-modal [isOpen]="!!viendo" [title]="viendo ? 'Historial de horario · ' + viendo.nombre : ''" icon="history" size="lg" (close)="viendo = null">
+    <app-modal [isOpen]="!!viendo" [title]="viendo ? 'Historial · ' + viendo.nombre : ''" icon="history" size="xl" (close)="viendo = null">
       @if (viendo) {
+        <div class="flex gap-1 border-b border-slate-200 mb-3" role="tablist" aria-label="Historial de la persona">
+          @for (t of pestanasHistorial; track t.id) {
+            <button type="button" role="tab" [attr.aria-selected]="vistaHistorial === t.id" class="px-4 min-h-11 text-sm font-bold border-b-2 -mb-px transition-colors" [ngClass]="vistaHistorial === t.id ? 'border-easydry-blue text-easydry-blue' : 'border-transparent text-slate-500 hover:text-slate-800'" (click)="vistaHistorial = t.id">{{ t.nombre }}</button>
+          }
+        </div>
+        @if (vistaHistorial === 'timbradas') {
+          <div class="space-y-3">
+            <div class="flex flex-wrap items-end gap-3">
+              <div><label class="field-label" for="hh-desde">Desde</label><input id="hh-desde" type="date" class="field" [(ngModel)]="marcasDesde" [max]="marcasHasta"></div>
+              <div><label class="field-label" for="hh-hasta">Hasta</label><input id="hh-hasta" type="date" class="field" [(ngModel)]="marcasHasta" [min]="marcasDesde"></div>
+              <button type="button" class="btn btn-primary" (click)="cargarTimbradasDe()" [disabled]="cargandoMarcas">{{ cargandoMarcas ? 'Cargando…' : 'Consultar' }}</button>
+            </div>
+            @if (cargandoMarcas) { <p class="py-6 text-center text-sm text-slate-500">Cargando timbradas…</p> }
+            @else if (errorMarcas) { <p class="text-xs font-semibold text-rose-700" role="alert">{{ errorMarcas }}</p> }
+            @else { <app-rrhh-historial [filas]="filasMarcas" [tolerancia]="ajuste?.toleranciaMin ?? 10" (ver)="marcaElegida = $event"></app-rrhh-historial> }
+          </div>
+        } @else {
         <div class="space-y-3">
           @for (c of historial; track c.id) {
             <div class="rounded-xl border border-slate-200 p-3 text-xs space-y-1">
@@ -191,8 +211,14 @@ const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).t
             <p class="py-6 text-center text-sm text-slate-500">{{ cargandoHistorial ? 'Cargando…' : 'Aún no hay cambios: esta persona tiene el horario por defecto.' }}</p>
           }
         </div>
+        }
       }
       <div modal-footer class="flex justify-end"><button type="button" class="btn btn-secondary" (click)="viendo = null">Cerrar</button></div>
+    </app-modal>
+
+    <!-- Detalle de una marca: va después del historial para abrirse encima -->
+    <app-modal [isOpen]="!!marcaElegida" [title]="marcaElegida ? (marcaElegida.marca.tipo === 'ENTRADA' ? 'Entrada' : 'Salida') + ' · ' + marcaElegida.marca.persona : ''" icon="camera" size="lg" (close)="marcaElegida = null">
+      @if (marcaElegida) { <app-rrhh-marca-detalle [elegida]="marcaElegida"></app-rrhh-marca-detalle> }
     </app-modal>
 
     <!-- Tolerancia -->
@@ -265,6 +291,18 @@ export class RrhhHorariosComponent implements OnInit {
   viendo: HorarioEquipoApi | null = null;
   historial: CambioHorarioApi[] = [];
   cargandoHistorial = false;
+
+  readonly pestanasHistorial = [
+    { id: 'timbradas' as const, nombre: 'Timbradas y fotos' },
+    { id: 'horario' as const, nombre: 'Cambios de horario' },
+  ];
+  vistaHistorial: 'timbradas' | 'horario' = 'timbradas';
+  marcasDesde = haceDias(29);
+  marcasHasta = haceDias(0);
+  filasMarcas: FilaDia[] = [];
+  cargandoMarcas = false;
+  errorMarcas = '';
+  marcaElegida: MarcaElegida | null = null;
 
   ajustando = false;
   tolerancia = 10;
@@ -378,11 +416,34 @@ export class RrhhHorariosComponent implements OnInit {
 
   abrirHistorial(p: HorarioEquipoApi): void {
     this.viendo = p;
+    this.vistaHistorial = 'timbradas';
+    this.cargarTimbradasDe();
     this.historial = [];
     this.cargandoHistorial = true;
     this.api.historialHorario(p.id).subscribe({
       next: (h) => { this.historial = h; this.cargandoHistorial = false; },
       error: () => { this.cargandoHistorial = false; },
+    });
+  }
+
+  /** Las timbradas (con sus fotos) de la persona cuyo historial está abierto. */
+  cargarTimbradasDe(): void {
+    const persona = this.viendo;
+    if (!persona) return;
+    this.cargandoMarcas = true;
+    this.errorMarcas = '';
+    this.filasMarcas = [];
+    this.api.timbradasEquipo(this.marcasDesde, this.marcasHasta, persona.id).subscribe({
+      next: (r) => {
+        if (this.viendo?.id !== persona.id) return;
+        this.filasMarcas = filasDelRango(r.evaluacion, r.filas, new Map([[persona.id, persona.nombre]])).filter((f) => f.estado !== 'SIN_HORARIO');
+        this.cargandoMarcas = false;
+      },
+      error: (e) => {
+        if (this.viendo?.id !== persona.id) return;
+        this.cargandoMarcas = false;
+        this.errorMarcas = mensajeDe(e, 'No se pudieron cargar las timbradas.');
+      },
     });
   }
 
