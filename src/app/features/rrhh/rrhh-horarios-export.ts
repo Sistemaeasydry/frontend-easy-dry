@@ -1,13 +1,13 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { ETIQUETA_ESTADO_DIA, FilaDia } from './rrhh.modelos';
+import { ETIQUETA_ESTADO_DIA, ETIQUETA_PUNTUALIDAD, FilaDia } from './rrhh.modelos';
 
 /**
  * Exportable de cumplimiento de horario: una fila por persona y día con el horario, las marcas reales, los minutos de atraso o adelanto,
  * las horas reales y las horas dentro del horario. Sin columnas fijas ni colores de relleno que estorben al imprimir.
  */
 
-const ENCABEZADOS = ['Fecha', 'Persona', 'Horario', 'Entrada', 'Salida', 'Min. entrada', 'Min. salida', 'Horas reales', 'Horas en horario', 'Estado', 'Observaciones'] as const;
+const ENCABEZADOS = ['Fecha', 'Persona', 'Horario', 'Entrada', 'Salida', 'Min. entrada', 'Min. salida', 'Horas reales', 'Horas en horario', 'Estado entrada', 'Estado salida', 'Estado del día', 'Observaciones'] as const;
 
 const fecha = (dia: string): string => `${dia.slice(8, 10)}/${dia.slice(5, 7)}/${dia.slice(0, 4)}`;
 const minutos = (m: number | null): string => (m === null ? '' : `${m > 0 ? '+' : ''}${m}`);
@@ -24,6 +24,8 @@ export function filasParaExportar(filas: readonly FilaDia[]): string[][] {
     minutos(f.minutosSalida),
     f.horasReales === null ? '' : String(f.horasReales),
     f.horasDentroHorario === null ? '' : String(f.horasDentroHorario),
+    f.puntualidadEntrada ? ETIQUETA_PUNTUALIDAD[f.puntualidadEntrada].nombre : '',
+    f.puntualidadSalida ? ETIQUETA_PUNTUALIDAD[f.puntualidadSalida].nombre : '',
     ETIQUETA_ESTADO_DIA[f.estado].nombre,
     f.observaciones.map((o) => ETIQUETA_ESTADO_DIA[o].nombre).join(', '),
   ]);
@@ -58,7 +60,7 @@ export async function exportarCumplimientoExcel(filas: readonly FilaDia[], desde
     // Las cifras van como número para poder sumarlas y filtrarlas en Excel.
     for (const col of [8, 9]) { const v = fila[col - 1]; if (v !== '') r.getCell(col).value = Number(v); }
   }
-  hoja.columns = [12, 28, 14, 9, 9, 12, 12, 13, 15, 20, 40].map((width) => ({ width }));
+  hoja.columns = [12, 28, 14, 9, 9, 12, 12, 13, 15, 14, 14, 20, 40].map((width) => ({ width }));
   hoja.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: ENCABEZADOS.length } };
   hoja.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '3:3' };
   const buffer = await libro.xlsx.writeBuffer();

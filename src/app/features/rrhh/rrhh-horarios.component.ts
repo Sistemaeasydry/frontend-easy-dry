@@ -33,8 +33,8 @@ const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).t
           <h2 class="font-extrabold text-slate-900">Horarios del personal</h2>
           @if (ajuste) {
             <p class="text-xs text-slate-600 mt-1">
-              Tolerancia de puntualidad: <strong>±{{ ajuste.toleranciaMin }} min</strong> · Ventana para timbrar: <strong>±{{ ajuste.ventanaMin }} min</strong> de la hora del horario.
-              @if (ajuste.proximoCambio) { <span class="badge badge-info ml-1">Desde el {{ ajuste.proximoCambio.vigenteDesde | date:'dd/MM/yyyy' }}: ±{{ ajuste.proximoCambio.toleranciaMin }} min y ±{{ ajuste.proximoCambio.ventanaMin }} min</span> }
+              Tolerancia de puntualidad: <strong>±{{ ajuste.toleranciaMin }} min</strong>. Antes de las 12:00 la marca es entrada; desde las 12:00, salida.
+              @if (ajuste.proximoCambio) { <span class="badge badge-info ml-1">Desde el {{ ajuste.proximoCambio.vigenteDesde | date:'dd/MM/yyyy' }}: ±{{ ajuste.proximoCambio.toleranciaMin }} min</span> }
             </p>
           }
         </div>
@@ -45,7 +45,7 @@ const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).t
             <input id="hor-buscar" type="search" class="field" [(ngModel)]="busqueda" placeholder="Nombre o rol">
           </div>
           @if (puedeAjustes) {
-            <button type="button" class="btn btn-secondary" (click)="abrirAjustes()"><i-lucide name="settings" class="w-4 h-4" aria-hidden="true"></i-lucide> Tolerancia y ventana</button>
+            <button type="button" class="btn btn-secondary" (click)="abrirAjustes()"><i-lucide name="settings" class="w-4 h-4" aria-hidden="true"></i-lucide> Tolerancia</button>
           }
         </div>
       </div>
@@ -195,8 +195,8 @@ const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).t
       <div modal-footer class="flex justify-end"><button type="button" class="btn btn-secondary" (click)="viendo = null">Cerrar</button></div>
     </app-modal>
 
-    <!-- Tolerancia y ventana -->
-    <app-modal [isOpen]="ajustando" title="Tolerancia y ventana de timbrada" icon="settings" size="lg" (close)="ajustando = false">
+    <!-- Tolerancia -->
+    <app-modal [isOpen]="ajustando" title="Tolerancia de puntualidad" icon="settings" size="lg" (close)="ajustando = false">
       @if (ajustando) {
         <div class="space-y-4">
           <p class="text-xs rounded-lg border border-sky-200 bg-sky-50 text-sky-900 p-2.5">Vale para todo el personal y rige desde <strong>mañana ({{ hasta | date:'dd/MM/yyyy' }})</strong>. Los días anteriores se siguen evaluando con los valores que tenían.</p>
@@ -205,11 +205,6 @@ const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).t
               <label class="field-label" for="aj-tol">Tolerancia de puntualidad (5 a 20 min) *</label>
               <input id="aj-tol" type="number" class="field" min="5" max="20" step="1" [(ngModel)]="tolerancia">
               <p class="text-[11px] text-slate-500 mt-1">Dentro de ±{{ tolerancia }} min de la hora del horario, la marca es puntual.</p>
-            </div>
-            <div>
-              <label class="field-label" for="aj-ven">Ventana para timbrar (0 a 120 min) *</label>
-              <input id="aj-ven" type="number" class="field" min="0" max="120" step="1" [(ngModel)]="ventana">
-              <p class="text-[11px] text-slate-500 mt-1">Fuera de ±{{ ventana }} min de la hora del horario no se deja timbrar. No puede ser menor que la tolerancia.</p>
             </div>
           </div>
           <div>
@@ -222,7 +217,7 @@ const manana = (): string => new Date(Date.now() - 5 * 3_600_000 + 86_400_000).t
             @for (c of historialAjustes; track c.id) {
               <div class="rounded-lg border border-slate-200 p-2.5 text-xs">
                 <p class="font-bold text-slate-900">{{ c.creadoEn | date:'dd/MM/yyyy HH:mm':zona }} · {{ c.actor }} · desde el {{ c.vigenteDesde | date:'dd/MM/yyyy' }}</p>
-                <p>@if (c.anterior) { Antes: ±{{ c.anterior.toleranciaMin }} min y ±{{ c.anterior.ventanaMin }} min · }Después: ±{{ c.toleranciaMin }} min y ±{{ c.ventanaMin }} min · Motivo: {{ c.motivo }}</p>
+                <p>@if (c.anterior) { Antes: ±{{ c.anterior.toleranciaMin }} min · }Después: ±{{ c.toleranciaMin }} min · Motivo: {{ c.motivo }}</p>
               </div>
             }
           </div>
@@ -406,10 +401,8 @@ export class RrhhHorariosComponent implements OnInit {
   guardarAjuste(): void {
     if (this.guardando) return;
     const t = Number(this.tolerancia);
-    const v = Number(this.ventana);
+    const v = Math.max(this.ventana, t);
     if (!Number.isInteger(t) || t < 5 || t > 20) { this.error = 'La tolerancia debe ser un número entero entre 5 y 20 minutos.'; return; }
-    if (!Number.isInteger(v) || v < 0 || v > 120) { this.error = 'La ventana debe ser un número entero entre 0 y 120 minutos.'; return; }
-    if (v < t) { this.error = 'La ventana no puede ser menor que la tolerancia.'; return; }
     if (this.motivo.trim().length < 5) { this.error = 'Escribe el motivo del cambio (mínimo 5 caracteres).'; return; }
     this.guardando = true;
     this.error = '';

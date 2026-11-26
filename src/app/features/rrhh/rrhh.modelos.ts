@@ -2,7 +2,7 @@
  * RRHH · reglas puras de las pantallas (sin servidor): agrupar las timbradas por día, tipo de archivo y límites de los adjuntos.
  * Las reglas que deciden de verdad (hora de Ecuador, entrada o salida, distancia, precisión) viven en el backend.
  */
-import type { DiaHorario, EstadoDia, EvaluacionDiaApi, SemanaHorario, TimbradaApi } from '../../core/services/rrhh.service';
+import type { DiaHorario, EstadoDia, EvaluacionDiaApi, Puntualidad, SemanaHorario, TimbradaApi } from '../../core/services/rrhh.service';
 
 export type TipoAdjunto = 'imagen' | 'video' | 'documento';
 
@@ -133,6 +133,8 @@ export function problemaDeSemana(semana: SemanaHorario): string | null {
     if (!d.trabaja) continue;
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(d.entrada) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(d.salida)) return `${NOMBRES_DIA[i]}: escribe la entrada y la salida.`;
     if (d.entrada >= d.salida) return `${NOMBRES_DIA[i]}: la salida debe ser posterior a la entrada (no se admiten turnos que cruzan la medianoche).`;
+    if (d.entrada >= '12:00') return `${NOMBRES_DIA[i]}: la entrada debe ser antes de las 12:00 (desde el mediodía las marcas cuentan como salida).`;
+    if (d.salida < '12:00') return `${NOMBRES_DIA[i]}: la salida debe ser desde las 12:00 (antes del mediodía las marcas cuentan como entrada).`;
   }
   return null;
 }
@@ -151,11 +153,11 @@ export function resumenSemana(semana: SemanaHorario): string[] {
 }
 
 export const ETIQUETA_ESTADO_DIA: Record<EstadoDia, { nombre: string; clase: string }> = {
-  CUMPLE: { nombre: 'Cumple', clase: 'badge-ok' },
-  ATRASO: { nombre: 'Atraso', clase: 'badge-warn' },
-  ENTRADA_TEMPRANA: { nombre: 'Entrada temprana', clase: 'badge-info' },
-  SALIDA_ANTICIPADA: { nombre: 'Salida anticipada', clase: 'badge-warn' },
-  SALIDA_TARDIA: { nombre: 'Salida tardía', clase: 'badge-info' },
+  CUMPLE: { nombre: 'A tiempo', clase: 'badge-ok' },
+  ATRASO: { nombre: 'Atrasado', clase: 'badge-warn' },
+  ENTRADA_TEMPRANA: { nombre: 'Entrada muy antes', clase: 'badge-info' },
+  SALIDA_ANTICIPADA: { nombre: 'Salida muy antes', clase: 'badge-warn' },
+  SALIDA_TARDIA: { nombre: 'Salida atrasada', clase: 'badge-info' },
   INCOMPLETO: { nombre: 'Incompleto', clase: 'badge-warn' },
   SIN_MARCA: { nombre: 'Sin marca', clase: 'badge-danger' },
   DIA_LIBRE: { nombre: 'Día libre', clase: 'badge-neutral' },
@@ -165,6 +167,38 @@ export const ETIQUETA_ESTADO_DIA: Record<EstadoDia, { nombre: string; clase: str
   NO_OBLIGATORIO: { nombre: 'No obligatorio timbrar', clase: 'badge-neutral' },
   REGISTRADO: { nombre: 'Registrado', clase: 'badge-info' },
 };
+
+export const ETIQUETA_PUNTUALIDAD: Record<Puntualidad, { nombre: string; clase: string }> = {
+  A_TIEMPO: { nombre: 'A tiempo', clase: 'badge-ok' },
+  MUY_ANTES: { nombre: 'Muy antes', clase: 'badge-info' },
+  ATRASADO: { nombre: 'Atrasado', clase: 'badge-danger' },
+};
+
+export interface ConteoPuntualidad {
+  /** Entradas atrasadas: es lo que se cuenta como atraso. */
+  atrasos: number;
+  minutosAtraso: number;
+  entradasATiempo: number;
+  entradasMuyAntes: number;
+  porPersona: Array<{ userId: string; persona: string; atrasos: number; minutos: number }>;
+}
+
+/** Cuenta cómo llegó la gente en los días dados y quién acumula más atrasos. */
+export function contarPuntualidad(filas: readonly FilaDia[]): ConteoPuntualidad {
+  const porPersona = new Map<string, { userId: string; persona: string; atrasos: number; minutos: number }>();
+  const conteo = { atrasos: 0, minutosAtraso: 0, entradasATiempo: 0, entradasMuyAntes: 0 };
+  for (const f of filas) {
+    if (f.puntualidadEntrada === 'A_TIEMPO') conteo.entradasATiempo++;
+    if (f.puntualidadEntrada === 'MUY_ANTES') conteo.entradasMuyAntes++;
+    if (f.puntualidadEntrada !== 'ATRASADO') continue;
+    const minutos = f.minutosEntrada ?? 0;
+    conteo.atrasos++;
+    conteo.minutosAtraso += minutos;
+    const p = porPersona.get(f.userId) ?? { userId: f.userId, persona: f.persona, atrasos: 0, minutos: 0 };
+    porPersona.set(f.userId, { ...p, atrasos: p.atrasos + 1, minutos: p.minutos + minutos });
+  }
+  return { ...conteo, porPersona: [...porPersona.values()].sort((a, b) => b.atrasos - a.atrasos || b.minutos - a.minutos || a.persona.localeCompare(b.persona)) };
+}
 
 /** Estados que merecen atención (los demás son normales o aún no se pueden juzgar). */
 export const ESTADOS_NOVEDAD: ReadonlySet<EstadoDia> = new Set<EstadoDia>(['ATRASO', 'ENTRADA_TEMPRANA', 'SALIDA_ANTICIPADA', 'SALIDA_TARDIA', 'INCOMPLETO', 'SIN_MARCA']);

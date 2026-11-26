@@ -6,9 +6,9 @@ import { ToastService } from '../../shared/services/toast.service';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AuthService } from '../../core/services/auth.service';
 import { StorageUploadService } from '../../core/services/storage-upload.service';
-import { AjusteHorarioApi, EstadoTimbrada, EvaluacionDiaApi, HorarioPersonaApi, PersonaEquipo, ResultadoTimbrada, RrhhService, TimbradaApi } from '../../core/services/rrhh.service';
+import { AjusteHorarioApi, EstadoTimbrada, EvaluacionDiaApi, HorarioPersonaApi, PersonaEquipo, Puntualidad, ResultadoTimbrada, RrhhService, TimbradaApi } from '../../core/services/rrhh.service';
 import { FiltroPersonal, RrhhFiltroPersonalComponent, pasaFiltroPersonal, sinFiltroPersonal } from './rrhh-filtro-personal.component';
-import { ESTADOS_NOVEDAD, ETIQUETA_ESTADO_DIA, ETIQUETA_VERIFICACION, FilaDia, ZONA_ECUADOR, filasDelRango, resumenSemana, textoMinutos } from './rrhh.modelos';
+import { ESTADOS_NOVEDAD, ETIQUETA_ESTADO_DIA, ETIQUETA_PUNTUALIDAD, contarPuntualidad, type ConteoPuntualidad, ETIQUETA_VERIFICACION, FilaDia, ZONA_ECUADOR, filasDelRango, resumenSemana, textoMinutos } from './rrhh.modelos';
 import { RrhhHorariosComponent } from './rrhh-horarios.component';
 import { exportarCumplimientoExcel, exportarCumplimientoPdf } from './rrhh-horarios-export';
 
@@ -44,7 +44,7 @@ const aDia = (d: Date): string => {
           <i-lucide name="clock" class="w-3.5 h-3.5" aria-hidden="true"></i-lucide><span>RRHH</span>
         </div>
         <h1 class="text-2xl font-extrabold text-slate-900 font-outfit">Timbradas</h1>
-        <p class="text-slate-500 text-xs mt-1 max-w-2xl">La marca es entrada o salida según tu horario, y solo se puede timbrar cerca de esas horas. La hora la pone el servidor. La foto es siempre de la cámara.</p>
+        <p class="text-slate-500 text-xs mt-1 max-w-2xl">Antes de las 12:00 la marca es la entrada y desde las 12:00, la salida. Tu horario dice si fue a tiempo, muy antes o atrasada. La hora la pone el servidor. La foto es siempre de la cámara.</p>
       </div>
 
       @if (verMarcar || verEquipo) {
@@ -71,7 +71,8 @@ const aDia = (d: Date): string => {
                 @if (!estado.obligatoria) {
                   <p>Para tu rol timbrar <strong>no es obligatorio</strong>: se registra la hora y si marcaste antes de tu horario ({{ estado.horario.entrada }} a {{ estado.horario.salida }}).</p>
                 } @else if (estado.horario.trabaja && estado.ventanas) {
-                  <p>Tu horario de hoy: <strong>{{ estado.horario.entrada }} a {{ estado.horario.salida }}</strong> · entrada de {{ estado.ventanas.entrada.desde }} a {{ estado.ventanas.entrada.hasta }} · salida de {{ estado.ventanas.salida.desde }} a {{ estado.ventanas.salida.hasta }}.</p>
+                  <p>Tu horario de hoy: <strong>{{ estado.horario.entrada }} a {{ estado.horario.salida }}</strong>. Tienes {{ estado.toleranciaMin }} min antes y después de cada hora para estar a tiempo.</p>
+                  <p>Antes de las 12:00 la marca cuenta como <strong>entrada</strong>; desde las 12:00, como <strong>salida</strong>.</p>
                 } @else { <p>Hoy es tu <strong>día libre</strong>.</p> }
                 @if (!estado.puedeTimbrar && estado.motivoBloqueo) {
                   <p class="rounded-lg border border-amber-200 bg-amber-50 text-amber-900 p-2 font-semibold" role="status">{{ estado.motivoBloqueo }}</p>
@@ -141,6 +142,7 @@ const aDia = (d: Date): string => {
               </div>
             }
             <h2 class="font-extrabold text-slate-900">Mis últimos días</h2>
+            <p class="text-xs text-slate-600">Atrasos en estos días: <strong [ngClass]="misAtrasos ? 'text-rose-700' : 'text-emerald-700'">{{ misAtrasos }}</strong></p>
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
                 <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-200"><th class="py-2 pr-3 font-bold">Fecha</th><th class="py-2 pr-3 font-bold">Entrada</th><th class="py-2 pr-3 font-bold">Salida</th><th class="py-2 pr-3 font-bold">Horas</th><th class="py-2 font-bold">Estado</th></tr></thead>
@@ -148,8 +150,8 @@ const aDia = (d: Date): string => {
                   @for (d of misFilas; track d.dia) {
                     <tr class="border-b border-slate-100 align-top">
                       <td class="py-2 pr-3 whitespace-nowrap">{{ d.dia | date:'EEE dd/MM' }}</td>
-                      <td class="py-2 pr-3">@if (d.entrada) { <button type="button" class="font-mono font-bold text-easydry-blue hover:underline" (click)="verMarca(d.entrada)">{{ d.entrada.marcadaEn | date:'HH:mm':zona }}</button><span class="block text-[11px] text-slate-500">{{ minutos(d.minutosEntrada) }}</span> } @else { <span class="text-slate-400">—</span> }</td>
-                      <td class="py-2 pr-3">@if (d.salida) { <button type="button" class="font-mono font-bold text-easydry-blue hover:underline" (click)="verMarca(d.salida)">{{ d.salida.marcadaEn | date:'HH:mm':zona }}</button><span class="block text-[11px] text-slate-500">{{ minutos(d.minutosSalida) }}</span> } @else { <span class="text-slate-400">—</span> }</td>
+                      <td class="py-2 pr-3">@if (d.entrada) { <button type="button" class="font-mono font-bold text-easydry-blue hover:underline" (click)="verMarca(d.entrada)">{{ d.entrada.marcadaEn | date:'HH:mm':zona }}</button><span class="block text-[11px] text-slate-500">{{ minutos(d.minutosEntrada) }}</span>@if (d.puntualidadEntrada) { <span class="badge" [ngClass]="puntual[d.puntualidadEntrada].clase">{{ puntual[d.puntualidadEntrada].nombre }}</span> } } @else { <span class="text-slate-400">—</span> }</td>
+                      <td class="py-2 pr-3">@if (d.salida) { <button type="button" class="font-mono font-bold text-easydry-blue hover:underline" (click)="verMarca(d.salida)">{{ d.salida.marcadaEn | date:'HH:mm':zona }}</button><span class="block text-[11px] text-slate-500">{{ minutos(d.minutosSalida) }}</span>@if (d.puntualidadSalida) { <span class="badge" [ngClass]="puntual[d.puntualidadSalida].clase">{{ puntual[d.puntualidadSalida].nombre }}</span> } } @else { <span class="text-slate-400">—</span> }</td>
                       <td class="py-2 pr-3 font-mono text-xs">@if (d.horasReales !== null) { {{ d.horasReales | number:'1.1-2' }} h<span class="block text-[11px] text-slate-500">{{ d.horasDentroHorario | number:'1.1-2' }} h en horario</span> } @else { — }</td>
                       <td class="py-2"><span class="badge" [ngClass]="etiqueta(d.estado).clase">{{ etiqueta(d.estado).nombre }}</span></td>
                     </tr>
@@ -184,6 +186,20 @@ const aDia = (d: Date): string => {
                   @for (p of personasFiltradas; track p.id) { <option [value]="p.id">{{ p.nombre }}</option> }
                 </select>
               </div>
+              <div>
+                <label class="field-label" for="rs-est-ent">Estado de entrada</label>
+                <select id="rs-est-ent" class="field" [(ngModel)]="filtroEntrada">
+                  <option value="">Todos</option>
+                  @for (o of opcionesPuntualidad; track o.id) { <option [value]="o.id">{{ o.nombre }}</option> }
+                </select>
+              </div>
+              <div>
+                <label class="field-label" for="rs-est-sal">Estado de salida</label>
+                <select id="rs-est-sal" class="field" [(ngModel)]="filtroSalida">
+                  <option value="">Todos</option>
+                  @for (o of opcionesPuntualidad; track o.id) { <option [value]="o.id">{{ o.nombre }}</option> }
+                </select>
+              </div>
               <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-700 min-h-11">
                 <input type="checkbox" [(ngModel)]="soloNovedades"> Solo con novedades
               </label>
@@ -194,6 +210,36 @@ const aDia = (d: Date): string => {
               }
             </div>
           </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" aria-label="Conteo de puntualidad del periodo">
+            <button type="button" class="text-left rounded-xl border p-3 transition-colors" [ngClass]="filtroEntrada === 'ATRASADO' ? 'border-rose-500 bg-rose-50' : 'border-slate-200 hover:border-slate-300'" (click)="alternarFiltroEntrada('ATRASADO')" [attr.aria-pressed]="filtroEntrada === 'ATRASADO'">
+              <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Atrasos</p>
+              <p id="rs-total-atrasos" class="text-2xl font-extrabold font-outfit text-rose-700">{{ conteo.atrasos }}</p>
+              <p class="text-[11px] text-slate-500">{{ conteo.minutosAtraso }} min acumulados</p>
+            </button>
+            <button type="button" class="text-left rounded-xl border p-3 transition-colors" [ngClass]="filtroEntrada === 'A_TIEMPO' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'" (click)="alternarFiltroEntrada('A_TIEMPO')" [attr.aria-pressed]="filtroEntrada === 'A_TIEMPO'">
+              <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Entradas a tiempo</p>
+              <p class="text-2xl font-extrabold font-outfit text-emerald-700">{{ conteo.entradasATiempo }}</p>
+            </button>
+            <button type="button" class="text-left rounded-xl border p-3 transition-colors" [ngClass]="filtroEntrada === 'MUY_ANTES' ? 'border-sky-500 bg-sky-50' : 'border-slate-200 hover:border-slate-300'" (click)="alternarFiltroEntrada('MUY_ANTES')" [attr.aria-pressed]="filtroEntrada === 'MUY_ANTES'">
+              <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Entradas muy antes</p>
+              <p class="text-2xl font-extrabold font-outfit text-sky-700">{{ conteo.entradasMuyAntes }}</p>
+            </button>
+          </div>
+          @if (conteo.porPersona.length) {
+            <details class="rounded-xl border border-slate-200 p-3">
+              <summary class="cursor-pointer text-xs font-extrabold text-slate-800">Atrasos por persona ({{ conteo.porPersona.length }})</summary>
+              <div class="max-h-64 overflow-y-auto mt-2">
+                <table class="w-full text-sm">
+                  <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-200"><th class="py-1 pr-3 font-bold">Persona</th><th class="py-1 pr-3 font-bold text-right">Atrasos</th><th class="py-1 font-bold text-right">Minutos</th></tr></thead>
+                  <tbody>
+                    @for (p of conteo.porPersona; track p.userId) {
+                      <tr class="border-b border-slate-100"><td class="py-1 pr-3">{{ p.persona }}</td><td class="py-1 pr-3 text-right font-extrabold text-rose-700">{{ p.atrasos }}</td><td class="py-1 text-right font-mono">{{ p.minutos }}</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          }
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-200">
@@ -205,8 +251,8 @@ const aDia = (d: Date): string => {
                     <td class="py-2 pr-3 whitespace-nowrap">{{ d.dia | date:'EEE dd/MM' }}</td>
                     <td class="py-2 pr-3">{{ d.persona }}</td>
                     <td class="py-2 pr-3 font-mono text-xs whitespace-nowrap">{{ d.horario ? d.horario.entrada + '–' + d.horario.salida : '—' }}</td>
-                    <td class="py-2 pr-3">@if (d.entrada) { <button type="button" class="font-mono font-bold text-easydry-blue hover:underline" (click)="verMarca(d.entrada)">{{ d.entrada.marcadaEn | date:'HH:mm':zona }}</button><span class="block text-[11px] text-slate-500">{{ minutos(d.minutosEntrada) }}</span> } @else { <span class="text-slate-400">—</span> }</td>
-                    <td class="py-2 pr-3">@if (d.salida) { <button type="button" class="font-mono font-bold text-easydry-blue hover:underline" (click)="verMarca(d.salida)">{{ d.salida.marcadaEn | date:'HH:mm':zona }}</button><span class="block text-[11px] text-slate-500">{{ minutos(d.minutosSalida) }}</span> } @else { <span class="text-slate-400">—</span> }</td>
+                    <td class="py-2 pr-3">@if (d.entrada) { <button type="button" class="font-mono font-bold text-easydry-blue hover:underline" (click)="verMarca(d.entrada)">{{ d.entrada.marcadaEn | date:'HH:mm':zona }}</button><span class="block text-[11px] text-slate-500">{{ minutos(d.minutosEntrada) }}</span>@if (d.puntualidadEntrada) { <span class="badge" [ngClass]="puntual[d.puntualidadEntrada].clase">{{ puntual[d.puntualidadEntrada].nombre }}</span> } } @else { <span class="text-slate-400">—</span> }</td>
+                    <td class="py-2 pr-3">@if (d.salida) { <button type="button" class="font-mono font-bold text-easydry-blue hover:underline" (click)="verMarca(d.salida)">{{ d.salida.marcadaEn | date:'HH:mm':zona }}</button><span class="block text-[11px] text-slate-500">{{ minutos(d.minutosSalida) }}</span>@if (d.puntualidadSalida) { <span class="badge" [ngClass]="puntual[d.puntualidadSalida].clase">{{ puntual[d.puntualidadSalida].nombre }}</span> } } @else { <span class="text-slate-400">—</span> }</td>
                     <td class="py-2 pr-3 font-mono">{{ d.horasReales !== null ? (d.horasReales | number:'1.1-2') + ' h' : '—' }}</td>
                     <td class="py-2 pr-3 font-mono">{{ d.horasDentroHorario !== null ? (d.horasDentroHorario | number:'1.1-2') + ' h' : '—' }}</td>
                     <td class="py-2">
@@ -274,6 +320,10 @@ export class RrhhTimbradasComponent implements OnInit, OnDestroy {
   hasta = aDia(new Date());
   filtroPersona = '';
   soloNovedades = false;
+  filtroEntrada: Puntualidad | '' = '';
+  filtroSalida: Puntualidad | '' = '';
+  readonly puntual = ETIQUETA_PUNTUALIDAD;
+  readonly opcionesPuntualidad = (Object.keys(ETIQUETA_PUNTUALIDAD) as Puntualidad[]).map((id) => ({ id, nombre: ETIQUETA_PUNTUALIDAD[id].nombre }));
   filtroPersonal: FiltroPersonal = sinFiltroPersonal();
   cargandoEquipo = false;
   marcasEquipo: TimbradaApi[] = [];
@@ -308,12 +358,30 @@ export class RrhhTimbradasComponent implements OnInit, OnDestroy {
     return this.personas.filter((p) => pasaFiltroPersonal(p, this.filtroPersonal));
   }
 
-  get filasEquipo(): FilaDia[] {
+  /** Los días del periodo de las personas que pasan los filtros de persona: sobre esto se cuentan los atrasos. */
+  private get filasDelPeriodo(): FilaDia[] {
     const visibles = new Set(this.personasFiltradas.map((p) => p.id));
     const nombres = new Map(this.personas.map((p) => [p.id, p.nombre] as const));
-    return filasDelRango(this.evaluacionEquipo, this.marcasEquipo, nombres)
-      .filter((f) => f.estado !== 'SIN_HORARIO' && visibles.has(f.userId))
-      .filter((f) => !this.soloNovedades || ESTADOS_NOVEDAD.has(f.estado));
+    return filasDelRango(this.evaluacionEquipo, this.marcasEquipo, nombres).filter((f) => f.estado !== 'SIN_HORARIO' && visibles.has(f.userId));
+  }
+
+  get conteo(): ConteoPuntualidad {
+    return contarPuntualidad(this.filasDelPeriodo);
+  }
+
+  get filasEquipo(): FilaDia[] {
+    return this.filasDelPeriodo
+      .filter((f) => !this.filtroEntrada || f.puntualidadEntrada === this.filtroEntrada)
+      .filter((f) => !this.filtroSalida || f.puntualidadSalida === this.filtroSalida)
+      .filter((f) => !this.soloNovedades || ESTADOS_NOVEDAD.has(f.estado) || f.observaciones.includes('ATRASO'));
+  }
+
+  alternarFiltroEntrada(estado: Puntualidad): void {
+    this.filtroEntrada = this.filtroEntrada === estado ? '' : estado;
+  }
+
+  get misAtrasos(): number {
+    return contarPuntualidad(this.misFilas).atrasos;
   }
 
   etiqueta(e: EvaluacionDiaApi['estado']) { return ETIQUETA_ESTADO_DIA[e]; }

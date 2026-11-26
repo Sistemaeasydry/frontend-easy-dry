@@ -129,6 +129,8 @@ export type EstadoDia =
   /** Su rol no está obligado a timbrar: ese día no marcó, o marcó y solo se muestra la hora. */
   | 'NO_OBLIGATORIO' | 'REGISTRADO';
 
+export type Puntualidad = 'A_TIEMPO' | 'MUY_ANTES' | 'ATRASADO';
+
 export interface EvaluacionDiaApi {
   userId: string;
   dia: string;
@@ -137,6 +139,9 @@ export interface EvaluacionDiaApi {
   horario: { entrada: string; salida: string } | null;
   entradaReal: string | null;
   salidaReal: string | null;
+  /** Estado de cada marca frente al horario; null si no hay marca o ese día no se juzga. */
+  puntualidadEntrada: Puntualidad | null;
+  puntualidadSalida: Puntualidad | null;
   /** Minutos respecto a la hora del horario: positivo = después, negativo = antes. */
   minutosEntrada: number | null;
   minutosSalida: number | null;
