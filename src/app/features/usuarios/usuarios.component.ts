@@ -754,7 +754,7 @@ const COLUMNAS_ROLES: TableColumn[] = [
                 </select>
               } @else {
                 <p id="usuarios-f3" class="p-2.5 border rounded-xl text-sm font-semibold bg-slate-50 border-slate-200 text-slate-600">{{ usuarioForm.rol || 'Sin rol' }}</p>
-                <p class="text-xs text-amber-700 mt-1">Para elegir o cambiar el rol necesitas el permiso «Ver roles».</p>
+                <p class="text-xs text-amber-700 mt-1">No se pudo cargar la lista de roles: el rol actual se mantiene.</p>
               }
             </div>
             <div>
@@ -1638,7 +1638,9 @@ export class UsuariosComponent implements OnInit, OnDestroy {
   /** El departamento sale de la categoría del rol elegido; los operativos llevan nivel. */
   get rolFormOperativo(): boolean {
     const rol = this.roles.find((r) => String(r.id) === String(this.usuarioForm.roleId));
-    return rol?.categoria === 'OPERADOR';
+    if (rol) return rol.categoria === 'OPERADOR';
+    // Sin la lista de roles (aún cargando) vale el departamento de la persona que se edita: el campo nunca debe faltar si se va a exigir.
+    return this.editandoUsuario?.departamento === 'OPERADOR';
   }
 
   get nivelInvalido(): boolean {
@@ -1832,7 +1834,12 @@ export class UsuariosComponent implements OnInit, OnDestroy {
   /** Roles que se pueden asignar: los activos (más el que el usuario ya tiene al editar). */
   get rolesAsignables(): RolPersonalizado[] {
     const actual = this.usuarioForm.roleId;
-    const disponibles = this.rolesVisibles.filter(r => r.estado === 'Activo' || r.estado === 1 || r.id === actual);
+    // A un administrador solo lo crea o asigna otro administrador (el servidor lo rechaza).
+    const disponibles = this.rolesVisibles
+      .filter(r => r.estado === 'Activo' || r.estado === 1 || r.id === actual)
+      .filter(r => this.actorEsAdministrador || r.id === actual || !funcionesDeRol(r.capacidades, r.codigo).has(FUNCION.ADMINISTRADOR))
+      // Los Backup los crea un administrador o quien tiene su casilla (el coordinador regional).
+      .filter(r => this.actorEsAdministrador || this.puedeGestionarBackups || r.id === actual || !funcionesDeRol(r.capacidades, r.codigo).has(FUNCION.BACKUP));
     return this.puedeGestionarUsuarios
       ? disponibles
       : disponibles.filter(r => funcionesDeRol(r.capacidades, r.codigo).has(FUNCION.BACKUP));
@@ -2017,8 +2024,9 @@ export class UsuariosComponent implements OnInit, OnDestroy {
       }));
     });
 
-    // Roles de la base de datos (solo con 'roles.ver'; alimentan tarjetas, selectores y el ámbito del formulario)
-    if (this.puedeVerRoles) {
+    // Roles de la base de datos: alimentan tarjetas, selectores, el ámbito del formulario y el nivel del personal operativo.
+    // Los necesita quien ve «Roles y Permisos» y también quien solo crea o edita usuarios (p. ej. Talento Humano).
+    if (this.puedeListarRoles) {
       this.rolService.getRoles().subscribe(list => {
         this.roles = list.map(rol => ({
           ...rol,
@@ -3063,6 +3071,11 @@ export class UsuariosComponent implements OnInit, OnDestroy {
   // ── Permisos de la pantalla (los mismos que exige el backend en cada endpoint) ──
   get puedeVerRoles(): boolean {
     return this.authService.puede('roles.ver');
+  }
+
+  /** La lista de roles para elegirlos en el formulario: la misma regla que aplica el servidor en `roles/list`. */
+  get puedeListarRoles(): boolean {
+    return this.puedeVerRoles || this.puedeCrearUsuario || this.puedeEditarUsuario;
   }
 
   get puedeCrearRol(): boolean { return this.authService.puede('usuarios.roles.crear'); }
