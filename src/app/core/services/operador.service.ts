@@ -15,6 +15,10 @@ export interface ConsultaOperadores extends Partial<ConsultaTabla> {
   categoriaRol?: string;
   /** Rol concreto (LAVADOR, PULIDOR, PULIDOR_FIJO, TECNICO…) */
   rol?: string;
+  /** OPERADOR | ADMINISTRACION */
+  departamento?: string;
+  /** JUNIOR | SENIOR */
+  nivel?: string;
   /** 1 activo, 0 inactivo */
   estado?: number;
   bahiaNombre?: string;
@@ -54,7 +58,7 @@ export class OperadorService {
     return postPagina<Operador>(
       this.http,
       apiUrl('/agencias/operadores/list'),
-      cuerpoConsulta(c, ['agenciaId', 'categoriaRol', 'rol', 'estado', 'bahiaNombre', 'clienteNombre', 'regionNombre']),
+      cuerpoConsulta(c, ['agenciaId', 'categoriaRol', 'rol', 'departamento', 'nivel', 'estado', 'bahiaNombre', 'clienteNombre', 'regionNombre']),
     );
   }
 
@@ -132,7 +136,9 @@ export class OperadorService {
 
   crearOperador(datos: Partial<Operador> & { password: string; passwordConfirmacion?: string }): Observable<Operador> {
     const payload = {
-      nombre: datos.nombre,
+      apellidos: datos.apellidos,
+      nombres: datos.nombres,
+      nivel: datos.nivel || undefined,
       cedula: datos.cedula,
       password: datos.password,
       passwordConfirmacion: datos.passwordConfirmacion,
@@ -198,7 +204,9 @@ export class OperadorService {
     const payload = {
       ...(motivo ? { motivo } : {}),
       id: String(op.id),
-      nombre: op.nombre,
+      apellidos: op.apellidos,
+      nombres: op.nombres,
+      nivel: op.nivel || undefined,
       cedula: op.cedula,
       telefono: op.telefono,
       rol: op.rol,

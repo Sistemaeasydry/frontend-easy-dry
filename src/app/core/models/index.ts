@@ -29,6 +29,10 @@ export interface Usuario {
   cedula?: string;
   /** Ciudad de la persona (texto libre). */
   ciudad?: string;
+  /** Solo personal operativo. */
+  nivel?: NivelPersonal | '';
+  /** Categoría del rol: OPERADOR (operativo) o ADMINISTRACION. */
+  departamento?: string;
   avatar?: string;
   sucursalAsignada?: string;
   bahiaAsignada?: string;
@@ -160,9 +164,15 @@ export interface Bahia {
 }
 
 
+export type NivelPersonal = 'JUNIOR' | 'SENIOR';
+
 export interface Operador {
   id: number | string;
+  /** «Apellidos Nombres» (así se muestra). */
   nombre: string;
+  apellidos?: string;
+  nombres?: string;
+  nivel?: NivelPersonal | '' | null;
   cedula: string;
   rol: string;
   sucursal: string;

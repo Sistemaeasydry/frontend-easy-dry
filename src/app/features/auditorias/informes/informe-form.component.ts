@@ -183,16 +183,6 @@ const aLocal = (iso: string) => {
                     <div><label class="field-label">Categoría</label>
                       <select class="field" [(ngModel)]="n.categoria" [disabled]="!contenidoEditable">@for (c of categorias; track c.id) { <option [value]="c.id">{{ c.nombre }}</option> }</select></div>
                     <div><label class="field-label">Área relacionada</label><input class="field" [(ngModel)]="n.area" maxlength="120" placeholder="Ej. bahía 2, bodega" [disabled]="!contenidoEditable"></div>
-                    @if (puedeAsignarTareas) {
-                    <div class="sm:col-span-2 rounded-lg border border-violet-200 bg-violet-50/70 p-3">
-                      <label class="field-label" [attr.for]="'nov-resp-' + $index">Responsable de la tarea (opcional)</label>
-                      <select [id]="'nov-resp-' + $index" class="field" [ngModel]="n.responsableId ?? ''" (ngModelChange)="elegirResponsable(n, $event)" [disabled]="!editable">
-                        <option value="">Sin responsable (no genera tarea)</option>
-                        @for (o of responsablesRrhh; track o.id) { <option [value]="o.id">{{ o.nombre }} · {{ o.rol }}@if (o.agencia) { · {{ o.agencia }} }</option> }
-                      </select>
-                      <p class="text-[11px] text-violet-900 mt-1">RRHH. Al guardar el informe de forma definitiva, esta novedad se le asigna como tarea y le llega el aviso. Debe ser alguien de tu alcance.</p>
-                    </div>
-                    }
                   </div>
                   <div><label class="field-label">Evidencias fotográficas</label>
                     <app-evidencias-fotos [fotos]="n.fotos" (fotosChange)="n.fotos = $event" [agenciaId]="form.agenciaId" tipo="informes" [referenciaId]="detalle?.id" [deshabilitado]="!contenidoEditable"></app-evidencias-fotos></div>
@@ -247,6 +237,16 @@ const aLocal = (iso: string) => {
                     <div class="sm:col-span-2"><label class="field-label">Descripción del problema *</label><textarea class="field" rows="2" [(ngModel)]="p.problema" [disabled]="!contenidoEditable"></textarea></div>
                     <div class="sm:col-span-2"><label class="field-label">Acción requerida</label><textarea class="field" rows="2" [(ngModel)]="p.accionRequerida" [disabled]="!contenidoEditable"></textarea></div>
                     <p class="sm:col-span-2 text-xs font-semibold text-slate-500">Responsable: la agencia del informe · Fecha: el día en que se crea el plan.</p>
+                    @if (puedeAsignarTareas) {
+                    <div class="sm:col-span-2 rounded-lg border border-violet-200 bg-violet-50/70 p-3">
+                      <label class="field-label" [attr.for]="'plan-resp-' + $index">Enviar como tarea a (opcional)</label>
+                      <select [id]="'plan-resp-' + $index" class="field" [ngModel]="p.responsableId ?? ''" (ngModelChange)="elegirResponsable(p, $event)" [disabled]="!editable">
+                        <option value="">Nadie (no genera tarea)</option>
+                        @for (o of responsablesRrhh; track o.id) { <option [value]="o.id">{{ o.nombre }} · {{ o.rol }}@if (o.agencia) { · {{ o.agencia }} }</option> }
+                      </select>
+                      <p class="text-[11px] text-violet-900 mt-1">RRHH. Al guardar el informe de forma definitiva, este plan se le asigna como tarea y le llega el aviso. Incluye a Admin y Super Admin.</p>
+                    </div>
+                    }
                   </div>
                   <div><label class="field-label">Evidencia de cumplimiento</label>
                     <app-evidencias-fotos [fotos]="p.evidenciaCumplimiento" (fotosChange)="p.evidenciaCumplimiento = $event" [agenciaId]="form.agenciaId" tipo="informes" [referenciaId]="detalle?.id" [deshabilitado]="!contenidoEditable"></app-evidencias-fotos></div>
@@ -392,7 +392,7 @@ const aLocal = (iso: string) => {
                 <div class="p-3 border-b border-slate-300 whitespace-pre-line"><strong>ANTECEDENTES:</strong> {{ form.antecedentes || '—' }}</div>
                 <div class="bg-[#a9c8ec] px-3 py-1.5 text-center text-xs font-extrabold">DESARROLLO Y NOVEDADES ENCONTRADAS</div>
                 <div class="p-3 whitespace-pre-line">{{ form.desarrollo || '—' }}
-                  @for (n of form.novedades; track $index) { <p class="mt-2">• <strong>{{ n.titulo }}</strong> {{ n.descripcion }} <span class="text-slate-500">[{{ n.fotos.length }} foto(s)]</span>@if (n.responsableId) { <span class="text-violet-700 font-semibold"> → tarea para {{ nombreResponsable(n.responsableId) }}</span> }</p> }
+                  @for (n of form.novedades; track $index) { <p class="mt-2">• <strong>{{ n.titulo }}</strong> {{ n.descripcion }} <span class="text-slate-500">[{{ n.fotos.length }} foto(s)]</span></p> }
                 </div>
                 <div class="bg-[#a9c8ec] px-3 py-1.5 text-center text-xs font-extrabold">ACTIVIDADES REALIZADAS EN LA AGENCIA DURANTE LA VISITA</div>
                 <div class="p-3 whitespace-pre-line">{{ form.actividadesGeneral || '—' }}
@@ -400,7 +400,7 @@ const aLocal = (iso: string) => {
                 </div>
                 <div class="bg-[#a9c8ec] px-3 py-1.5 text-center text-xs font-extrabold">PLANES DE ACCIÓN PENDIENTES DE OTRAS ÁREAS</div>
                 <div class="p-3 whitespace-pre-line">{{ form.planesGeneral || '—' }}
-                  @for (p of form.planes; track $index) { <p class="mt-2">• <strong>{{ p.problema }}</strong> → {{ p.accionRequerida || '—' }} ({{ p.fechaCompromiso ? (p.fechaCompromiso | date:'dd/MM/yyyy') : 'sin fecha' }})</p> }
+                  @for (p of form.planes; track $index) { <p class="mt-2">• <strong>{{ p.problema }}</strong> → {{ p.accionRequerida || '—' }} ({{ p.fechaCompromiso ? (p.fechaCompromiso | date:'dd/MM/yyyy') : 'sin fecha' }})@if (p.responsableId) { <span class="text-violet-700 font-semibold"> → tarea para {{ nombreResponsable(p.responsableId) }}</span> }</p> }
                 </div>
                 <div class="bg-[#a9c8ec] px-3 py-1.5 text-center text-xs font-extrabold">OBSERVACIONES Y APROBACIÓN</div>
                 <div class="p-3"><strong>Observaciones del jefe de taller:</strong> {{ form.observacionesJefeTaller || '—' }}<br><strong>Calificación:</strong> {{ form.calificacion ? nombreCalificacion(form.calificacion) : '—' }}</div>
@@ -479,7 +479,7 @@ export class InformeFormComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
-  /** RRHH: a quién se le puede asignar la tarea de una novedad (personas activas del alcance de quien hace el informe). */
+  /** RRHH: a quién se le puede asignar la tarea de un plan de acción (personas activas del alcance de quien hace el informe). */
   private readonly rrhh = inject(RrhhService);
   responsablesRrhh: PersonaAsignable[] = [];
   get puedeAsignarTareas(): boolean { return this.auth.puede('rrhh.tareas.asignar'); }
@@ -650,7 +650,7 @@ export class InformeFormComponent implements OnInit {
       planesGeneral: d.planesGeneral,
       observacionesJefeTaller: d.observacionesJefeTaller,
       calificacion: d.calificacion,
-      novedades: d.novedades.map((n) => ({ ...n, fotos: [...n.fotos], responsableId: n.responsableId || undefined })),
+      novedades: d.novedades.map((n) => ({ ...n, fotos: [...n.fotos] })),
       actividades: d.actividades.map((a) => ({ ...a, fotos: [...a.fotos] })),
       planes: d.planes.map((p) => ({ ...p, evidenciaCumplimiento: [...p.evidenciaCumplimiento] })),
     };
@@ -825,10 +825,9 @@ export class InformeFormComponent implements OnInit {
       actividadesGeneral: f.actividadesGeneral,
       planesGeneral: f.planesGeneral,
       ...(this.puedeCalificar ? { observacionesJefeTaller: f.observacionesJefeTaller, ...(f.calificacion ? { calificacion: f.calificacion } : {}) } : {}),
-      // El responsable de la tarea es del prototipo de RRHH: no se envía al servidor.
-      novedades: f.novedades.filter((n) => n.titulo.trim()).map((n) => ({ ...n, responsableId: n.responsableId || undefined })),
+      novedades: f.novedades.filter((n) => n.titulo.trim()),
       actividades: f.actividades.filter((a) => a.nombre.trim()),
-      planes: f.planes.filter((p) => p.problema.trim()).map((p) => ({ ...p, fechaCompromiso: p.fechaCompromiso || null })),
+      planes: f.planes.filter((p) => p.problema.trim()).map((p) => ({ ...p, fechaCompromiso: p.fechaCompromiso || null, responsableId: p.responsableId || undefined })),
     };
   }
 
@@ -865,9 +864,9 @@ export class InformeFormComponent implements OnInit {
     }
   }
 
-  /** Elegir o quitar el responsable de la tarea de una novedad: se guarda con el borrador y la tarea nace al guardar el informe. */
-  elegirResponsable(n: Novedad, personaId: string): void {
-    n.responsableId = personaId || undefined;
+  /** Elegir o quitar a quién se le envía la tarea de un plan: se guarda con el borrador y la tarea nace al guardar el informe. */
+  elegirResponsable(p: PlanAccion, personaId: string): void {
+    p.responsableId = personaId || undefined;
   }
 
   /** Guarda el informe de forma definitiva: desde ahí ya no se puede modificar. */
@@ -886,8 +885,8 @@ export class InformeFormComponent implements OnInit {
     try {
       const d = await firstValueFrom(this.api.guardar(this.detalle.id));
       this.toast.success('Informe guardado', `${d.numero} quedó guardado y pendiente de aprobación.`);
-      const tareas = d.novedades.filter((n) => n.responsableId).length;
-      if (tareas) this.toast.info('Tareas asignadas (RRHH)', `${tareas} tarea${tareas === 1 ? '' : 's'} creada${tareas === 1 ? '' : 's'} desde las novedades.`);
+      const tareas = d.planes.filter((p) => p.responsableId).length;
+      if (tareas) this.toast.info('Tareas asignadas (RRHH)', `${tareas} tarea${tareas === 1 ? '' : 's'} creada${tareas === 1 ? '' : 's'} desde los planes de acción.`);
       void this.router.navigate(['/informes-inspeccion', d.id]);
     } catch (e) {
       this.errorGuardado = mensajeError(e, 'No se pudo guardar el informe.');

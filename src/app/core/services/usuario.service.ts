@@ -22,6 +22,9 @@ export interface ConsultaUsuarios {
   clienteId?: string;
   /** 1 = activo, 0 = inactivo. */
   estado?: number;
+  /** Departamento: la categoría del rol. */
+  departamento?: 'OPERADOR' | 'ADMINISTRACION';
+  nivel?: 'JUNIOR' | 'SENIOR';
   segmento?: 'todos' | 'lavadores' | 'supervisores' | 'bodega' | 'admins' | 'inactivos';
   /** Fecha de ingreso (AAAA-MM-DD), ambos inclusive. */
   fechaDesde?: string;
@@ -104,6 +107,8 @@ export class UsuarioService {
       telefono: u.telefono || '',
       cedula: u.cedula || '',
       ciudad: u.ciudad || '',
+      nivel: u.nivel || '',
+      departamento: u.role?.categoria,
       fechaAsignacion: fechaFormatted,
       agencia: agenciaDisplay,
       sucursal: agenciaDisplay,
@@ -151,7 +156,7 @@ export class UsuarioService {
     if (c.sortField) { body['sortField'] = c.sortField; body['sortOrder'] = c.sortOrder || 'desc'; }
     const texto = (c.search || '').trim();
     if (texto.length >= 2) body['search'] = texto;
-    for (const k of ['rolNombre', 'agenciaId', 'regionId', 'clienteId', 'fechaDesde', 'fechaHasta'] as const) {
+    for (const k of ['rolNombre', 'departamento', 'nivel', 'agenciaId', 'regionId', 'clienteId', 'fechaDesde', 'fechaHasta'] as const) {
       const v = c[k];
       if (v !== undefined && v !== null && v !== '') body[k] = v;
     }
@@ -212,6 +217,7 @@ export class UsuarioService {
       telefono: usr.telefono || undefined,
       cedula: usr.cedula?.trim() || undefined,
       ciudad: usr.ciudad?.trim() || undefined,
+      nivel: usr.nivel || undefined,
     };
 
     if (!isAsistente && !usr.bodegaId) {
@@ -262,6 +268,7 @@ export class UsuarioService {
       // Vacío quita el dato; sin enviar, no se toca (quien no ve la cédula no la pisa).
       ...(usr.cedula !== undefined ? { cedula: usr.cedula.trim() } : {}),
       ...(usr.ciudad !== undefined ? { ciudad: usr.ciudad.trim() } : {}),
+      ...(usr.nivel !== undefined ? { nivel: usr.nivel } : {}),
       estado: usr.estado === 'Activo' ? 1 : 0,
       rolNombre: usr.rol,
       roleId: usr.roleId || (usr as any).roleId || undefined,
