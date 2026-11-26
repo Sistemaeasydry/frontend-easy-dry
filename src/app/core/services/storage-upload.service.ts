@@ -354,6 +354,22 @@ export class StorageUploadService {
   }
 
   /**
+   * El archivo de una foto, para trabajar con sus bytes (por ejemplo, meterla en un PDF). Se descarga de S3 y, si el navegador no lo
+   * permite (CORS del bucket), la entrega la API, que aplica los mismos permisos.
+   */
+  async descargarFoto(value: string): Promise<Blob> {
+    const url = await this.resolveMediaUrlStrict(value);
+    try {
+      const respuesta = await fetch(url, { cache: 'no-store' });
+      if (respuesta.ok) return await respuesta.blob();
+    } catch {
+      // Sin CORS o sin red hacia S3: se intenta por la API.
+    }
+    const key = this.extractKey(String(value).trim()) || String(value);
+    return firstValueFrom(this.http.get(apiUrl(`/storage/contenido?key=${encodeURIComponent(key)}`), { responseType: 'blob' }));
+  }
+
+  /**
    * Como resolveMediaUrl, pero lanza MediaError si un archivo privado no se puede obtener (para mostrar el motivo).
    * Lo público (avatar/catálogo) sigue por /storage/file.
    */

@@ -9,26 +9,53 @@ export const GRIS: [number, number, number] = [100, 116, 139];
 
 export interface ImagenCargada { dataUrl: string; formato: 'PNG' | 'JPEG'; ancho: number; alto: number }
 
-/** Descarga una imagen (también las privadas, con URL firmada) y la deja lista para incrustar en el PDF. */
+/** Lado mayor, en píxeles, de las fotos que se meten en un PDF: de sobra para el recuadro impreso y sin archivos enormes. */
+const LADO_MAXIMO_FOTO = 1200;
+
+const leerComoDataUrl = (blob: Blob): Promise<string> =>
+  new Promise<string>((ok, mal) => {
+    const lector = new FileReader();
+    lector.onload = () => ok(String(lector.result));
+    lector.onerror = () => mal(lector.error);
+    lector.readAsDataURL(blob);
+  });
+
+const abrirImagen = (dataUrl: string): Promise<HTMLImageElement> =>
+  new Promise<HTMLImageElement>((ok, mal) => {
+    const img = new Image();
+    img.onload = () => ok(img);
+    img.onerror = () => mal(new Error('imagen no válida'));
+    img.src = dataUrl;
+  });
+
+/** Vuelve a dibujar la imagen como JPEG reducido: sirve para cualquier formato que abra el navegador (WEBP incluido). */
+function comoJpeg(img: HTMLImageElement): ImagenCargada {
+  const escala = Math.min(1, LADO_MAXIMO_FOTO / Math.max(img.naturalWidth, img.naturalHeight));
+  const lienzo = document.createElement('canvas');
+  lienzo.width = Math.max(1, Math.round(img.naturalWidth * escala));
+  lienzo.height = Math.max(1, Math.round(img.naturalHeight * escala));
+  const ctx = lienzo.getContext('2d')!;
+  // El JPEG no tiene transparencia: sin fondo, lo transparente saldría negro.
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+  ctx.drawImage(img, 0, 0, lienzo.width, lienzo.height);
+  return { dataUrl: lienzo.toDataURL('image/jpeg', 0.82), formato: 'JPEG', ancho: lienzo.width, alto: lienzo.height };
+}
+
+/**
+ * Descarga una imagen y la deja lista para incrustar. Con `storage` es una foto de evidencia (privada), que va como JPEG reducido;
+ * sin él son logos y firmas, que conservan su PNG con transparencia.
+ */
 export async function cargarImagen(origen: string, storage?: StorageUploadService): Promise<ImagenCargada | null> {
   try {
-    let url = origen;
-    if (storage && !origen.startsWith('data:') && !origen.startsWith('assets/')) url = await storage.resolveMediaUrlStrict(origen);
-    const blob = origen.startsWith('data:') ? await (await fetch(origen)).blob() : await (await fetch(url)).blob();
-    const dataUrl = await new Promise<string>((ok, mal) => {
-      const lector = new FileReader();
-      lector.onload = () => ok(String(lector.result));
-      lector.onerror = () => mal(lector.error);
-      lector.readAsDataURL(blob);
-    });
-    const dim = await new Promise<{ w: number; h: number }>((ok, mal) => {
-      const img = new Image();
-      img.onload = () => ok({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = () => mal(new Error('imagen no válida'));
-      img.src = dataUrl;
-    });
-    return { dataUrl, formato: /image\/png/.test(blob.type) ? 'PNG' : 'JPEG', ancho: dim.w, alto: dim.h };
-  } catch {
+    const esFoto = !!storage && !origen.startsWith('data:') && !origen.startsWith('assets/');
+    const blob = esFoto ? await storage.descargarFoto(origen) : await (await fetch(origen)).blob();
+    const dataUrl = await leerComoDataUrl(blob);
+    const img = await abrirImagen(dataUrl);
+    if (esFoto || !/image\/(png|jpeg)/.test(blob.type)) return comoJpeg(img);
+    return { dataUrl, formato: blob.type.includes('png') ? 'PNG' : 'JPEG', ancho: img.naturalWidth, alto: img.naturalHeight };
+  } catch (e) {
+    console.warn('No se pudo incluir una imagen en el PDF', e);
     return null;
   }
 }

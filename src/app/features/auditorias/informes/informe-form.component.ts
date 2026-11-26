@@ -33,6 +33,8 @@ import { SelectSearchComponent } from '../../../shared/components/select-search/
 import { descargarPdfInforme } from './informe-pdf';
 
 import { nombreCompleto } from '../../../core/utils/nombre-persona';
+import { ThumbSrcDirective } from '../../../shared/directives/thumb-src.directive';
+import { VerMediaDirective } from '../../../shared/directives/ver-media.directive';
 interface Paso { id: number; titulo: string; corto: string; icono: string }
 
 const aLocal = (iso: string) => {
@@ -48,7 +50,7 @@ const aLocal = (iso: string) => {
 @Component({
   selector: 'app-informe-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, LucideAngularModule, EvidenciasFotosComponent, FirmaModalComponent, FirmaImagenComponent, SelectSearchComponent, InformeAdjuntosComponent],
+  imports: [VerMediaDirective, ThumbSrcDirective, CommonModule, FormsModule, RouterLink, LucideAngularModule, EvidenciasFotosComponent, FirmaModalComponent, FirmaImagenComponent, SelectSearchComponent, InformeAdjuntosComponent],
   template: `
     <div class="space-y-5 animate-fade-in max-w-5xl mx-auto">
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -392,15 +394,15 @@ const aLocal = (iso: string) => {
                 <div class="p-3 border-b border-slate-300 whitespace-pre-line"><strong>ANTECEDENTES:</strong> {{ form.antecedentes || '—' }}</div>
                 <div class="bg-[#a9c8ec] px-3 py-1.5 text-center text-xs font-extrabold">DESARROLLO Y NOVEDADES ENCONTRADAS</div>
                 <div class="p-3 whitespace-pre-line">{{ form.desarrollo || '—' }}
-                  @for (n of form.novedades; track $index) { <p class="mt-2">• <strong>{{ n.titulo }}</strong> {{ n.descripcion }} <span class="text-slate-500">[{{ n.fotos.length }} foto(s)]</span></p> }
+                  @for (n of form.novedades; track $index) { <p class="mt-2">• <strong>{{ n.titulo }}</strong> {{ n.descripcion }}</p> @if (n.fotos.length) { <span class="flex flex-wrap gap-2 mt-1 mb-2">@for (foto of n.fotos; track foto) { <img [appThumb]="foto" [appVerMedia]="foto" class="w-28 h-28 object-cover rounded-lg border border-slate-200 cursor-zoom-in" alt="Foto de la novedad"> }</span> } }
                 </div>
                 <div class="bg-[#a9c8ec] px-3 py-1.5 text-center text-xs font-extrabold">ACTIVIDADES REALIZADAS EN LA AGENCIA DURANTE LA VISITA</div>
                 <div class="p-3 whitespace-pre-line">{{ form.actividadesGeneral || '—' }}
-                  @for (a of form.actividades; track $index) { <p class="mt-2">• <strong>{{ a.nombre }}</strong> {{ a.descripcion }}</p> }
+                  @for (a of form.actividades; track $index) { <p class="mt-2">• <strong>{{ a.nombre }}</strong> {{ a.descripcion }}</p> @if (a.fotos.length) { <span class="flex flex-wrap gap-2 mt-1 mb-2">@for (foto of a.fotos; track foto) { <img [appThumb]="foto" [appVerMedia]="foto" class="w-28 h-28 object-cover rounded-lg border border-slate-200 cursor-zoom-in" alt="Foto de la actividad"> }</span> } }
                 </div>
                 <div class="bg-[#a9c8ec] px-3 py-1.5 text-center text-xs font-extrabold">PLANES DE ACCIÓN PENDIENTES DE OTRAS ÁREAS</div>
                 <div class="p-3 whitespace-pre-line">{{ form.planesGeneral || '—' }}
-                  @for (p of form.planes; track $index) { <p class="mt-2">• <strong>{{ p.problema }}</strong> → {{ p.accionRequerida || '—' }} ({{ p.fechaCompromiso ? (p.fechaCompromiso | date:'dd/MM/yyyy') : 'sin fecha' }})@if (p.responsableId) { <span class="text-violet-700 font-semibold"> → tarea para {{ nombreResponsable(p.responsableId) }}</span> }</p> }
+                  @for (p of form.planes; track $index) { <p class="mt-2">• <strong>{{ p.problema }}</strong> → {{ p.accionRequerida || '—' }} ({{ p.fechaCompromiso ? (p.fechaCompromiso | date:'dd/MM/yyyy') : 'sin fecha' }})@if (p.responsableId) { <span class="text-violet-700 font-semibold"> → tarea para {{ nombreResponsable(p.responsableId) }}</span> }</p> @if (p.evidenciaCumplimiento.length) { <span class="flex flex-wrap gap-2 mt-1 mb-2">@for (foto of p.evidenciaCumplimiento; track foto) { <img [appThumb]="foto" [appVerMedia]="foto" class="w-28 h-28 object-cover rounded-lg border border-slate-200 cursor-zoom-in" alt="Evidencia de cumplimiento"> }</span> } }
                 </div>
                 <div class="bg-[#a9c8ec] px-3 py-1.5 text-center text-xs font-extrabold">OBSERVACIONES Y APROBACIÓN</div>
                 <div class="p-3"><strong>Observaciones del jefe de taller:</strong> {{ form.observacionesJefeTaller || '—' }}<br><strong>Calificación:</strong> {{ form.calificacion ? nombreCalificacion(form.calificacion) : '—' }}</div>
