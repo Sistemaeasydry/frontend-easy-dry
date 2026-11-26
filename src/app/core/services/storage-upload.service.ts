@@ -91,6 +91,15 @@ export interface UploadMediaOptions {
   onProgress?: (percentage: number) => void;
 }
 
+/** En pocas palabras, por qué falló una descarga. */
+function motivoDeDescarga(e: unknown): string {
+  const err = e as { status?: number; estado?: string; message?: string } | null;
+  if (err?.status) return `HTTP ${err.status}`;
+  if (err?.estado) return err.estado;
+  // fetch rechazado sin respuesta: casi siempre el almacenamiento no autoriza a esta web (CORS) o no hay red.
+  return err?.message === 'Failed to fetch' || err?.status === 0 ? 'bloqueada o sin red' : (err?.message ?? 'error desconocido');
+}
+
 @Injectable({ providedIn: 'root' })
 export class StorageUploadService {
   private readonly http = inject(HttpClient);
@@ -354,19 +363,45 @@ export class StorageUploadService {
   }
 
   /**
-   * El archivo de una foto, para trabajar con sus bytes (por ejemplo, meterla en un PDF). Se descarga de S3 y, si el navegador no lo
-   * permite (CORS del bucket), la entrega la API, que aplica los mismos permisos.
+   * El archivo de una foto, para trabajar con sus bytes (por ejemplo, meterla en un PDF). Prueba en orden: el original, la copia
+   * grande y la miniatura (las que se ven en pantalla); cada una desde S3 y, si el navegador no lo permite (CORS del bucket), por la
+   * API, que aplica los mismos permisos. `esValida` descarta un archivo que llega pero no se puede abrir (p. ej. HEIC). Si nada sirve,
+   * el error dice qué pasó en cada intento.
    */
-  async descargarFoto(value: string): Promise<Blob> {
-    const url = await this.resolveMediaUrlStrict(value);
-    try {
-      const respuesta = await fetch(url, { cache: 'no-store' });
-      if (respuesta.ok) return await respuesta.blob();
-    } catch {
-      // Sin CORS o sin red hacia S3: se intenta por la API.
+  async descargarFoto(value: string, esValida: (foto: Blob) => Promise<boolean> = async () => true): Promise<Blob> {
+    const original = String(value).trim();
+    const key = this.extractKey(original);
+    const copias = key && !/^(thumbs|view)\//.test(key)
+      ? ['view', 'thumbs'].map((carpeta) => `${carpeta}/${key.replace(/\.[^./]+$/, '')}.jpg`)
+      : [];
+    const motivos: string[] = [];
+    for (const [indice, candidata] of [original, ...copias].entries()) {
+      const nombre = ['original', 'copia grande', 'miniatura'][indice];
+      for (const via of ['S3', 'API'] as const) {
+        try {
+          const foto = via === 'S3' ? await this.descargarDeS3(candidata) : await this.descargarPorApi(candidata);
+          if (await esValida(foto)) return foto;
+          motivos.push(`${nombre} (${via}): formato que el navegador no abre`);
+          break;
+        } catch (e) {
+          motivos.push(`${nombre} (${via}): ${motivoDeDescarga(e)}`);
+        }
+      }
     }
-    const key = this.extractKey(String(value).trim()) || String(value);
-    return firstValueFrom(this.http.get(apiUrl(`/storage/contenido?key=${encodeURIComponent(key)}`), { responseType: 'blob' }));
+    throw new Error(motivos.join(' · '));
+  }
+
+  private async descargarDeS3(value: string): Promise<Blob> {
+    const respuesta = await fetch(await this.resolveMediaUrlStrict(value), { cache: 'no-store' });
+    if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+    return respuesta.blob();
+  }
+
+  private descargarPorApi(value: string): Promise<Blob> {
+    const key = this.extractKey(value) || value;
+    return firstValueFrom(
+      this.http.get(apiUrl(`/storage/contenido?key=${encodeURIComponent(key)}`), { responseType: 'blob', headers: { 'X-Silent-Fallback': '1' } }),
+    );
   }
 
   /**

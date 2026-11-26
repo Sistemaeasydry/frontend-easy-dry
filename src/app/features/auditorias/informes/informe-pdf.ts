@@ -6,7 +6,7 @@ import {
   InformeDetalle,
 
 } from '../../../core/models/auditorias.model';
-import { AZUL_TITULO, GRIS, PdfFlow, TEXTO, cargarImagen, fechaHora, fechaLarga, guardarPdf } from '../shared/pdf-flow';
+import { AZUL_TITULO, GRIS, PdfFlow, TEXTO, ResultadoFotos, avisoFotoNoDisponible, cargarImagen, fechaHora, fechaLarga, guardarPdf } from '../shared/pdf-flow';
 
 const nombreDe = (lista: { id: string; nombre: string }[], id: string) => lista.find((x) => x.id === id)?.nombre ?? id;
 
@@ -15,7 +15,8 @@ const nombreDe = (lista: { id: string; nombre: string }[], id: string) => lista.
  * página 2 desde los planes de acción hasta las firmas (capturadas en pantalla), y las fotos de evidencia como anexos. Muestra lo
  * que está guardado, sin alterar ningún registro.
  */
-export async function descargarPdfInforme(i: InformeDetalle, storage: StorageUploadService): Promise<void> {
+export async function descargarPdfInforme(i: InformeDetalle, storage: StorageUploadService): Promise<ResultadoFotos> {
+  const fallos: string[] = [];
   const flow = new PdfFlow((doc) => {
     doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(...GRIS).text(`${i.numero} · ${i.agencia.nombre}`, 12, 292);
   });
@@ -128,11 +129,12 @@ export async function descargarPdfInforme(i: InformeDetalle, storage: StorageUpl
       flow.y += 6;
       let x = flow.margen;
       for (const url of g.fotos) {
-        const img = await cargarImagen(url, storage);
+        let motivo = '';
+        const img = await cargarImagen(url, storage, (m) => { motivo = m; fallos.push(m); });
         if (x + 56 > flow.margen + flow.ancho + 1) { x = flow.margen; flow.y += 52; }
         flow.asegurar(52);
         if (img) flow.imagen(img, x, flow.y, 56, 48);
-        else doc.setFont('helvetica', 'italic').setFontSize(7.5).setTextColor(...GRIS).text('Foto no disponible', x + 2, flow.y + 20);
+        else avisoFotoNoDisponible(flow, x, flow.y, motivo);
         x += 58;
       }
       flow.y += 54;
@@ -140,5 +142,6 @@ export async function descargarPdfInforme(i: InformeDetalle, storage: StorageUpl
   }
 
   guardarPdf(flow, `Informe_inspeccion_${i.numero}`);
+  return { fotosFallidas: fallos.length, motivo: fallos[0] ?? '' };
 }
 

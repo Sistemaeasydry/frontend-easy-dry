@@ -42,22 +42,47 @@ function comoJpeg(img: HTMLImageElement): ImagenCargada {
   return { dataUrl: lienzo.toDataURL('image/jpeg', 0.82), formato: 'JPEG', ancho: lienzo.width, alto: lienzo.height };
 }
 
+const seAbre = async (blob: Blob): Promise<boolean> => {
+  try {
+    await abrirImagen(await leerComoDataUrl(blob));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Descarga una imagen y la deja lista para incrustar. Con `storage` es una foto de evidencia (privada), que va como JPEG reducido;
- * sin él son logos y firmas, que conservan su PNG con transparencia.
+ * sin él son logos y firmas, que conservan su PNG con transparencia. Si no se puede, devuelve null y avisa por `alFallar`.
  */
-export async function cargarImagen(origen: string, storage?: StorageUploadService): Promise<ImagenCargada | null> {
+export async function cargarImagen(origen: string, storage?: StorageUploadService, alFallar?: (motivo: string) => void): Promise<ImagenCargada | null> {
   try {
     const esFoto = !!storage && !origen.startsWith('data:') && !origen.startsWith('assets/');
-    const blob = esFoto ? await storage.descargarFoto(origen) : await (await fetch(origen)).blob();
+    const blob = esFoto ? await storage.descargarFoto(origen, seAbre) : await (await fetch(origen)).blob();
     const dataUrl = await leerComoDataUrl(blob);
     const img = await abrirImagen(dataUrl);
     if (esFoto || !/image\/(png|jpeg)/.test(blob.type)) return comoJpeg(img);
     return { dataUrl, formato: blob.type.includes('png') ? 'PNG' : 'JPEG', ancho: img.naturalWidth, alto: img.naturalHeight };
   } catch (e) {
-    console.warn('No se pudo incluir una imagen en el PDF', e);
+    const motivo = e instanceof Error ? e.message : String(e);
+    console.warn('No se pudo incluir una imagen en el PDF:', motivo);
+    alFallar?.(motivo);
     return null;
   }
+}
+
+/** Resultado de exportar: cuántas fotos no entraron y por qué (la primera). */
+export interface ResultadoFotos {
+  fotosFallidas: number;
+  motivo: string;
+}
+
+/** Escribe en el recuadro de una foto que no se pudo incluir por qué no está, para poder diagnosticarlo desde el propio PDF. */
+export function avisoFotoNoDisponible(flow: PdfFlow, x: number, y: number, motivo: string): void {
+  const { doc } = flow;
+  doc.setFont('helvetica', 'italic').setFontSize(7.5).setTextColor(...GRIS).text('Foto no disponible', x + 2, y + 16);
+  const detalle: string[] = doc.splitTextToSize(motivo, 52);
+  doc.setFontSize(5.5).text(detalle.slice(0, 11), x + 2, y + 20);
 }
 
 /**

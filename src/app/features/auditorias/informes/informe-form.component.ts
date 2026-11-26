@@ -901,7 +901,8 @@ export class InformeFormComponent implements OnInit {
     if (!(await this.guardarSiCambio()) || !this.detalle) return;
     this.generando = true;
     try {
-      await descargarPdfInforme(this.detalle, this.storage);
+      const resultado = await descargarPdfInforme(this.detalle, this.storage);
+      if (resultado.fotosFallidas) this.toast.warning(`${resultado.fotosFallidas} foto(s) no entraron en el PDF`, resultado.motivo);
     } catch (e) {
       this.toast.error('No se pudo generar el PDF', mensajeError(e));
     } finally {

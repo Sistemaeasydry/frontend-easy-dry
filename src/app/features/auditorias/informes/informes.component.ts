@@ -253,7 +253,8 @@ export class InformesComponent implements OnInit, OnDestroy {
     this.generando = i.id;
     try {
       const detalle = await firstValueFrom(this.api.getDetalle(i.id));
-      await descargarPdfInforme(detalle, this.storage);
+      const resultado = await descargarPdfInforme(detalle, this.storage);
+      if (resultado.fotosFallidas) this.toast.warning(`${resultado.fotosFallidas} foto(s) no entraron en el PDF`, resultado.motivo);
     } catch (e) {
       this.toast.error('No se pudo generar el PDF', mensajeError(e));
     } finally {

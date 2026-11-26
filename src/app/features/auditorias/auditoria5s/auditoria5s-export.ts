@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import { StorageUploadService } from '../../../core/services/storage-upload.service';
 import { Auditoria5sDetalle, Formato5sCatalogo, FormatoId, SEMAFORO } from '../../../core/models/auditorias.model';
-import { AZUL_ENCABEZADO, AZUL_TITULO, GRIS, PdfFlow, TEXTO, cargarImagen, fechaLarga, guardarPdf } from '../shared/pdf-flow';
+import { AZUL_ENCABEZADO, AZUL_TITULO, GRIS, PdfFlow, TEXTO, ResultadoFotos, avisoFotoNoDisponible, cargarImagen, fechaLarga, guardarPdf } from '../shared/pdf-flow';
 
 const TITULOS: Record<FormatoId, string> = {
   LISTA_20: 'CHECK LIST DE AUDITORÍA 5S – ÁREA DE LAVADO DE AUTOS',
@@ -62,7 +62,8 @@ export function descargarExcel5s(a: Auditoria5sDetalle, cat: Formato5sCatalogo):
 }
 
 /** PDF de la auditoría: encabezado, los 20 criterios con sus hallazgos, resumen, semáforo, gráfica de las cinco S y anexos fotográficos. */
-export async function descargarPdf5s(a: Auditoria5sDetalle, cat: Formato5sCatalogo, storage: StorageUploadService): Promise<void> {
+export async function descargarPdf5s(a: Auditoria5sDetalle, cat: Formato5sCatalogo, storage: StorageUploadService): Promise<ResultadoFotos> {
+  const fallos: string[] = [];
   const flow = new PdfFlow((doc) => {
     doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(...GRIS).text(`${a.codigo} · ${a.agencia.nombre}${a.area !== 'GENERAL' ? ' · ' + a.areaNombre : ''}`, 12, 292);
   });
@@ -177,11 +178,12 @@ export async function descargarPdf5s(a: Auditoria5sDetalle, cat: Formato5sCatalo
       flow.y += 6;
       let px = flow.margen;
       for (const url of c.fotos) {
-        const img = await cargarImagen(url, storage);
+        let motivo = '';
+        const img = await cargarImagen(url, storage, (m) => { motivo = m; fallos.push(m); });
         if (px + 56 > flow.margen + flow.ancho + 1) { px = flow.margen; flow.y += 52; }
         flow.asegurar(52);
         if (img) flow.imagen(img, px, flow.y, 56, 48);
-        else doc.setFont('helvetica', 'italic').setFontSize(7.5).setTextColor(...GRIS).text('Foto no disponible', px + 2, flow.y + 20);
+        else avisoFotoNoDisponible(flow, px, flow.y, motivo);
         px += 58;
       }
       flow.y += 54;
@@ -189,6 +191,7 @@ export async function descargarPdf5s(a: Auditoria5sDetalle, cat: Formato5sCatalo
   }
 
   guardarPdf(flow, `Auditoria_5S_${a.codigo}`);
+  return { fotosFallidas: fallos.length, motivo: fallos[0] ?? '' };
 }
 
 function hexARgb(hex: string): [number, number, number] {

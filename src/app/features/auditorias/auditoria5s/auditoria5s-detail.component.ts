@@ -326,7 +326,8 @@ export class Auditoria5sDetailComponent implements OnInit {
   async pdf(): Promise<void> {
     this.generando = true;
     try {
-      await descargarPdf5s(this.a!, this.fmt!, this.storage);
+      const resultado = await descargarPdf5s(this.a!, this.fmt!, this.storage);
+      if (resultado.fotosFallidas) this.toast.warning(`${resultado.fotosFallidas} foto(s) no entraron en el PDF`, resultado.motivo);
     } catch (e) {
       this.toast.error('No se pudo generar el PDF', mensajeError(e));
     } finally {
