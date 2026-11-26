@@ -721,8 +721,8 @@ export class RrhhDotacionesComponent implements OnInit {
   }
 
   eliminarProducto(p: ProductoDotacionApi): void {
-    const stock = p.stock ? ` Tiene ${p.stock} en stock, y también se borra su historial de ingresos.` : '';
-    void this.eliminar('Eliminar producto', `¿Eliminar «${p.nombre}»?${stock} Esta acción no se puede deshacer.`, () => this.api.eliminarProducto(p.id), () => this.cargarCatalogo());
+    const stock = p.stock ? ` Todavía tiene ${p.stock} en stock.` : '';
+    void this.eliminar('Eliminar producto', `¿Eliminar «${p.nombre}»?${stock} Sale de los planes y de las entregas pendientes. El historial de lo ya entregado y de sus movimientos se conserva.`, () => this.api.eliminarProducto(p.id), () => this.cargarCatalogo());
   }
 
   abrirProducto(p?: ProductoDotacionApi): void {
@@ -819,7 +819,7 @@ export class RrhhDotacionesComponent implements OnInit {
   }
 
   eliminarPlan(p: PlanDotacionApi): void {
-    void this.eliminar('Eliminar plan', `¿Eliminar el plan «${p.nombre}»? También se borran sus entregas pendientes y omitidas. Esta acción no se puede deshacer.`, () => this.api.eliminarPlan(p.id), () => { this.planesFiltro = []; this.filtroPlan = ''; this.cargarPlanes(); this.cargarCatalogo(); });
+    void this.eliminar('Eliminar plan', `¿Eliminar el plan «${p.nombre}»? Sus entregas pendientes se descartan. Las ya entregadas u omitidas se conservan en el historial.`, () => this.api.eliminarPlan(p.id), () => { this.planesFiltro = []; this.filtroPlan = ''; this.cargarPlanes(); this.cargarCatalogo(); });
   }
 
   resumenItems(p: PlanDotacionApi): string { return p.items.map((i) => `${i.cantidad} × ${i.producto}`).join(', '); }
