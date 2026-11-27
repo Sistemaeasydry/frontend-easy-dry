@@ -65,7 +65,7 @@ describe('RRHH · reglas de las pantallas', () => {
 
 const evaluacion = (userId: string, dia: string, estado: EvaluacionDiaApi['estado']): EvaluacionDiaApi => ({
   userId, dia, estado, observaciones: [], horario: { entrada: '08:00', salida: '17:00' }, entradaReal: null, salidaReal: null,
-  minutosEntrada: null, minutosSalida: null, horasReales: null, horasDentroHorario: null,
+  puntualidadEntrada: null, puntualidadSalida: null, minutosEntrada: null, minutosSalida: null, horasReales: null, horasDentroHorario: null, minutosDespuesSalida: null,
 });
 
 describe('RRHH · horarios', () => {

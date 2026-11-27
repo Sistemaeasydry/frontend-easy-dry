@@ -254,7 +254,7 @@ const aDia = (d: Date): string => {
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-200">
-                <th class="py-2 pr-3 font-bold">Fecha</th><th class="py-2 pr-3 font-bold">Persona</th><th class="py-2 pr-3 font-bold">Horario</th><th class="py-2 pr-3 font-bold">Entrada</th><th class="py-2 pr-3 font-bold">Salida</th><th class="py-2 pr-3 font-bold">Horas reales</th><th class="py-2 pr-3 font-bold">Horas en horario</th><th class="py-2 font-bold">Estado</th>
+                <th class="py-2 pr-3 font-bold">Fecha</th><th class="py-2 pr-3 font-bold">Persona</th><th class="py-2 pr-3 font-bold">Horario</th><th class="py-2 pr-3 font-bold">Entrada</th><th class="py-2 pr-3 font-bold">Salida</th><th class="py-2 pr-3 font-bold">Horas trabajadas</th><th class="py-2 pr-3 font-bold">Horas en horario</th><th class="py-2 font-bold">Estado</th>
               </tr></thead>
               <tbody>
                 @for (d of filasPagina; track d.dia + d.userId) {
@@ -286,7 +286,7 @@ const aDia = (d: Date): string => {
               </span>
             </div>
           }
-          <p class="text-[11px] text-slate-500">«Sin marca» es un día de trabajo sin ninguna timbrada; puede deberse a un permiso o a vacaciones, que este módulo aún no registra. «Incompleto» es un día con una sola marca: no se calculan horas. Las horas en horario descuentan lo trabajado antes de la entrada o después de la salida del horario.</p>
+          <p class="text-[11px] text-slate-500">«Sin marca» es un día de trabajo sin ninguna timbrada; puede deberse a un permiso o a vacaciones, que este módulo aún no registra. «Incompleto» es un día con una sola marca: no se calculan horas. Al contar las horas, una marca dentro de ±{{ ajuste?.toleranciaMin ?? 10 }} min vale como la hora exacta del horario. Las horas en horario descuentan lo trabajado antes de la entrada o después de la salida.</p>
         </section>
       }
 

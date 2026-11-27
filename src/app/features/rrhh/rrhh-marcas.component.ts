@@ -61,7 +61,11 @@ export class RrhhMarcaCeldaComponent {
   readonly zona = ZONA_ECUADOR;
   readonly etiquetas = ETIQUETA_PUNTUALIDAD;
   get lugar(): string { return this.marca ? lugarDe(this.marca) : ''; }
-  get textoDeMinutos(): string { return textoMinutos(this.minutos, this.tolerancia); }
+  get textoDeMinutos(): string {
+    // En la salida se muestran todos los minutos hechos después de la hora, aunque estén dentro de la tolerancia.
+    if (this.marca?.tipo === 'SALIDA' && this.minutos !== null && this.minutos > 0) return `+${this.minutos} min después de la salida`;
+    return textoMinutos(this.minutos, this.tolerancia);
+  }
 
   abrir(): void {
     if (this.marca) this.ver.emit({ marca: this.marca, puntualidad: this.puntualidad, minutos: this.minutos });
@@ -251,7 +255,7 @@ export class RrhhMarcaDetalleComponent implements OnChanges {
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-200">
-            <th class="py-2 pr-3 font-bold">Fecha</th><th class="py-2 pr-3 font-bold">Horario</th><th class="py-2 pr-3 font-bold">Entrada</th><th class="py-2 pr-3 font-bold">Salida</th><th class="py-2 pr-3 font-bold">Horas</th><th class="py-2 font-bold">Estado del día</th>
+            <th class="py-2 pr-3 font-bold">Fecha</th><th class="py-2 pr-3 font-bold">Horario</th><th class="py-2 pr-3 font-bold">Entrada</th><th class="py-2 pr-3 font-bold">Salida</th><th class="py-2 pr-3 font-bold">Horas trabajadas</th><th class="py-2 font-bold">Estado del día</th>
           </tr></thead>
           <tbody>
             @for (d of visibles; track d.dia) {

@@ -4,10 +4,10 @@ import { ETIQUETA_ESTADO_DIA, ETIQUETA_PUNTUALIDAD, FilaDia } from './rrhh.model
 
 /**
  * Exportable de cumplimiento de horario: una fila por persona y día con el horario, las marcas reales, los minutos de atraso o adelanto,
- * las horas reales y las horas dentro del horario. Sin columnas fijas ni colores de relleno que estorben al imprimir.
+ * los minutos después de la salida, las horas trabajadas y las horas dentro del horario. Sin columnas fijas ni colores de relleno que estorben al imprimir.
  */
 
-const ENCABEZADOS = ['Fecha', 'Persona', 'Horario', 'Entrada', 'Salida', 'Min. entrada', 'Min. salida', 'Horas reales', 'Horas en horario', 'Estado entrada', 'Estado salida', 'Lugar entrada', 'Lugar salida', 'Estado del día', 'Observaciones'] as const;
+const ENCABEZADOS = ['Fecha', 'Persona', 'Horario', 'Entrada', 'Salida', 'Min. entrada', 'Min. salida', 'Min. después de salida', 'Horas trabajadas', 'Horas en horario', 'Estado entrada', 'Estado salida', 'Lugar entrada', 'Lugar salida', 'Estado del día', 'Observaciones'] as const;
 
 const fecha = (dia: string): string => `${dia.slice(8, 10)}/${dia.slice(5, 7)}/${dia.slice(0, 4)}`;
 const minutos = (m: number | null): string => (m === null ? '' : `${m > 0 ? '+' : ''}${m}`);
@@ -22,6 +22,7 @@ export function filasParaExportar(filas: readonly FilaDia[]): string[][] {
     f.salidaReal ?? '',
     minutos(f.minutosEntrada),
     minutos(f.minutosSalida),
+    f.minutosDespuesSalida === null ? '' : String(f.minutosDespuesSalida),
     f.horasReales === null ? '' : String(f.horasReales),
     f.horasDentroHorario === null ? '' : String(f.horasDentroHorario),
     f.puntualidadEntrada ? ETIQUETA_PUNTUALIDAD[f.puntualidadEntrada].nombre : '',
@@ -60,9 +61,9 @@ export async function exportarCumplimientoExcel(filas: readonly FilaDia[], desde
   for (const fila of filasParaExportar(filas)) {
     const r = hoja.addRow(fila);
     // Las cifras van como número para poder sumarlas y filtrarlas en Excel.
-    for (const col of [8, 9]) { const v = fila[col - 1]; if (v !== '') r.getCell(col).value = Number(v); }
+    for (const col of [8, 9, 10]) { const v = fila[col - 1]; if (v !== '') r.getCell(col).value = Number(v); }
   }
-  hoja.columns = [12, 28, 14, 9, 9, 12, 12, 13, 15, 14, 14, 24, 24, 20, 40].map((width) => ({ width }));
+  hoja.columns = [12, 28, 14, 9, 9, 12, 12, 14, 13, 15, 14, 14, 24, 24, 20, 40].map((width) => ({ width }));
   hoja.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: ENCABEZADOS.length } };
   hoja.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '3:3' };
   const buffer = await libro.xlsx.writeBuffer();
@@ -79,7 +80,7 @@ export function exportarCumplimientoPdf(filas: readonly FilaDia[], desde: string
     body: filasParaExportar(filas),
     styles: { fontSize: 8, cellPadding: 3 },
     headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
-    columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' } },
+    columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' } },
     margin: { left: 40, right: 40 },
   });
   doc.save(nombreArchivo(desde, hasta, 'pdf'));

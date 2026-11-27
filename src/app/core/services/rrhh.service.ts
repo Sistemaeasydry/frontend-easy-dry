@@ -147,6 +147,7 @@ export interface EvaluacionDiaApi {
   minutosSalida: number | null;
   horasReales: number | null;
   horasDentroHorario: number | null;
+  minutosDespuesSalida: number | null;
 }
 
 export interface DiaHorario { trabaja: boolean; entrada: string; salida: string }
