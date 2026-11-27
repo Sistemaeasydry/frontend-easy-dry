@@ -304,6 +304,10 @@ export class RrhhService {
     return this.post('tareas/asignadas', filtro);
   }
 
+  todasLasTareas(filtro: FiltroTareas = {}): Observable<TareaApi[]> {
+    return this.post('tareas/todas', filtro);
+  }
+
   sinResponsable(): Observable<TareaApi[]> {
     return this.post('tareas/sin-responsable');
   }

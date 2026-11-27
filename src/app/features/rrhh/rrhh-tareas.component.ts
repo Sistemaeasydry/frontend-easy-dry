@@ -11,7 +11,7 @@ import { FiltroPersonal, RrhhFiltroPersonalComponent, pasaFiltroPersonal, sinFil
 import { AdjuntoElegido, RrhhAdjuntosComponent } from './rrhh-adjuntos.component';
 import { ESTADOS_TAREA, ETIQUETA_EVENTO, MAX_ADJUNTOS, ZONA_ECUADOR } from './rrhh.modelos';
 
-type Pestana = 'mias' | 'asignadas';
+type Pestana = 'mias' | 'asignadas' | 'todas';
 type FiltroEstado = '' | EstadoTarea | 'VENCIDA' | 'SIN_RESPONSABLE';
 
 const mensajeDe = (e: unknown, defecto: string): string => {
@@ -22,6 +22,7 @@ const mensajeDe = (e: unknown, defecto: string): string => {
 /**
  * RRHH · Tareas del personal. «Mis tareas» (quien las recibe): ve las suyas y las completa con una respuesta y evidencias.
  * «Tareas asignadas» (quien asigna): asigna a personas de su alcance, y revisa, devuelve, cancela o reasigna las que asignó.
+ * «Todas las tareas» (solo ADMIN y SUPER_ADMIN): consulta las de cualquier persona, sin acciones.
  * Los avisos llegan por la campana del encabezado.
  */
 @Component({
@@ -38,6 +39,7 @@ const mensajeDe = (e: unknown, defecto: string): string => {
           <h1 class="text-2xl font-extrabold text-slate-900 font-outfit">Tareas del personal</h1>
           <p class="text-slate-500 text-xs mt-1 max-w-2xl">
             @if (pestana === 'mias') { Las tareas que te asignaron. Complétalas con una respuesta y al menos una evidencia: quien te la asignó la revisa. }
+            @else if (pestana === 'todas') { Las tareas de todo el personal, para consulta. Revisarlas, cancelarlas o reasignarlas le corresponde a quien las asignó. }
             @else { Asigna tareas a las personas de tu alcance con título, descripción y archivos. Cuando las completan, tú las revisas. }
           </p>
         </div>
@@ -48,10 +50,15 @@ const mensajeDe = (e: unknown, defecto: string): string => {
         }
       </div>
 
-      @if (verMias && verAsignadas) {
+      @if ((verMias && verAsignadas) || verTodas) {
         <div class="flex gap-1 border-b border-slate-200" role="tablist" aria-label="Tareas">
+          @if (verMias) {
           <button type="button" role="tab" [attr.aria-selected]="pestana === 'mias'" class="px-4 min-h-11 text-sm font-bold border-b-2 -mb-px transition-colors" [ngClass]="pestana === 'mias' ? 'border-easydry-blue text-easydry-blue' : 'border-transparent text-slate-500 hover:text-slate-800'" (click)="cambiarPestana('mias')">Mis tareas</button>
+          }
           <button type="button" role="tab" [attr.aria-selected]="pestana === 'asignadas'" class="px-4 min-h-11 text-sm font-bold border-b-2 -mb-px transition-colors" [ngClass]="pestana === 'asignadas' ? 'border-easydry-blue text-easydry-blue' : 'border-transparent text-slate-500 hover:text-slate-800'" (click)="cambiarPestana('asignadas')">Tareas asignadas</button>
+          @if (verTodas) {
+            <button type="button" role="tab" [attr.aria-selected]="pestana === 'todas'" class="px-4 min-h-11 text-sm font-bold border-b-2 -mb-px transition-colors" [ngClass]="pestana === 'todas' ? 'border-easydry-blue text-easydry-blue' : 'border-transparent text-slate-500 hover:text-slate-800'" (click)="cambiarPestana('todas')">Todas las tareas</button>
+          }
         </div>
       }
 
@@ -78,7 +85,7 @@ const mensajeDe = (e: unknown, defecto: string): string => {
             <label class="field-label" for="rr-buscar">Buscar</label>
             <input id="rr-buscar" class="field" [(ngModel)]="busqueda" placeholder="Título o descripción…" autocomplete="off">
           </div>
-          @if (pestana === 'asignadas') {
+          @if (pestana !== 'mias') {
             <app-rrhh-filtro-personal [filtro]="filtroPersonal" (filtroChange)="cambiarFiltroPersonal($event)"></app-rrhh-filtro-personal>
             <div>
               <label class="field-label" for="rr-op">Responsable</label>
@@ -88,13 +95,22 @@ const mensajeDe = (e: unknown, defecto: string): string => {
               </select>
             </div>
           }
+          @if (pestana === 'todas') {
+            <div>
+              <label class="field-label" for="rr-asig">Asignada por</label>
+              <select id="rr-asig" class="field" [(ngModel)]="filtroAsignador">
+                <option value="">Todos</option>
+                @for (p of asignadores; track p.id) { <option [value]="p.id">{{ p.nombre }}</option> }
+              </select>
+            </div>
+          }
           <div>
             <label class="field-label" for="rr-est">Estado</label>
             <select id="rr-est" class="field" [(ngModel)]="filtroEstado">
               <option value="">Todos</option>
               @for (e of estados; track e.id) { <option [value]="e.id">{{ e.nombre }}</option> }
               <option value="VENCIDA">Vencida</option>
-              @if (pestana === 'asignadas') { <option value="SIN_RESPONSABLE">Sin responsable activo</option> }
+              @if (pestana !== 'mias') { <option value="SIN_RESPONSABLE">Sin responsable activo</option> }
             </select>
           </div>
         </div>
@@ -108,8 +124,9 @@ const mensajeDe = (e: unknown, defecto: string): string => {
               <div class="min-w-0">
                 <h2 class="font-extrabold text-slate-900"><span class="text-slate-400 font-mono text-xs mr-1">{{ t.numero }}</span>{{ t.titulo }}</h2>
                 <p class="text-xs text-slate-500">
-                  @if (pestana === 'asignadas') { Para <strong class="text-slate-700">{{ t.asignadoA.nombre }}</strong>@if (t.asignadoA.agencia) { · {{ t.asignadoA.agencia }} } }
-                  @else { Asignada por <strong class="text-slate-700">{{ t.asignadoPor.nombre }}</strong> }
+                  @if (pestana !== 'mias') { Para <strong class="text-slate-700">{{ t.asignadoA.nombre }}</strong>@if (t.asignadoA.agencia) { · {{ t.asignadoA.agencia }} } }
+                  @if (pestana === 'todas') { · }
+                  @if (pestana !== 'asignadas') { Asignada por <strong class="text-slate-700">{{ t.asignadoPor.nombre }}</strong> }
                   @if (!t.asignadoA.activo) { <span class="badge badge-warn ml-1">Responsable inactivo</span> }
                 </p>
               </div>
@@ -329,17 +346,20 @@ export class RrhhTareasComponent implements OnInit {
 
   verMias = false;
   verAsignadas = false;
+  verTodas = false;
   pestana: Pestana = 'asignadas';
   cargando = false;
   enviando = false;
 
   mias: TareaApi[] = [];
   asignadas: TareaApi[] = [];
+  todas: TareaApi[] = [];
   sinResponsable: TareaApi[] = [];
   personas: PersonaAsignable[] = [];
 
   busqueda = '';
   filtroPersona = '';
+  filtroAsignador = '';
   filtroPersonal: FiltroPersonal = sinFiltroPersonal();
   filtroEstado: FiltroEstado = '';
 
@@ -363,6 +383,7 @@ export class RrhhTareasComponent implements OnInit {
     const esAdmin = this.puede('funcion.administrador');
     this.verMias = this.puede('rrhh.tareas.propias');
     this.verAsignadas = this.puede('rrhh.tareas.asignar');
+    this.verTodas = esAdmin && this.verAsignadas;
     // Un administrador sobre todo asigna y revisa: abre en «asignadas».
     this.pestana = this.verMias && !(esAdmin && this.verAsignadas) ? 'mias' : 'asignadas';
     this.cargar();
@@ -373,7 +394,10 @@ export class RrhhTareasComponent implements OnInit {
   private abrirPorId(id: string): void {
     this.api.detalleTarea(id).subscribe({
       next: (t) => {
-        this.pestana = this.verMias && t.asignadoA.id === this.auth.currentUserValue?.id ? 'mias' : this.verAsignadas ? 'asignadas' : 'mias';
+        const yo = this.auth.currentUserValue?.id;
+        if (this.verMias && t.asignadoA.id === yo) this.pestana = 'mias';
+        else if (this.verTodas && t.asignadoPor.id !== yo) this.pestana = 'todas';
+        else this.pestana = this.verAsignadas ? 'asignadas' : 'mias';
         this.detalle = t;
       },
       error: () => this.toast.warning('Tarea no disponible', 'No tienes acceso a esa tarea o ya no existe.'),
@@ -384,6 +408,7 @@ export class RrhhTareasComponent implements OnInit {
     this.pestana = p;
     this.filtroEstado = '';
     this.filtroPersona = '';
+    this.filtroAsignador = '';
     this.filtroPersonal = sinFiltroPersonal();
   }
 
@@ -398,12 +423,20 @@ export class RrhhTareasComponent implements OnInit {
       this.api.sinResponsable().subscribe({ next: (t) => { this.sinResponsable = t; listo(); }, error: listo });
       this.api.asignables().subscribe({ next: (p) => { this.personas = p; listo(); }, error: listo });
     }
+    if (this.verTodas) { pendientes++; this.api.todasLasTareas().subscribe({ next: (t) => { this.todas = t; listo(); }, error: listo }); }
     if (pendientes === 0) this.cargando = false;
   }
 
-  /** En «asignadas», el departamento y el nivel del responsable acotan la lista y también las tarjetas. */
+  /** Fuera de «Mis tareas», el departamento y el nivel del responsable acotan la lista y también las tarjetas. */
   private get lista(): TareaApi[] {
-    return this.pestana === 'mias' ? this.mias : this.asignadas.filter((t) => pasaFiltroPersonal(t.asignadoA, this.filtroPersonal));
+    if (this.pestana === 'mias') return this.mias;
+    return (this.pestana === 'todas' ? this.todas : this.asignadas).filter((t) => pasaFiltroPersonal(t.asignadoA, this.filtroPersonal));
+  }
+
+  /** Quienes han asignado alguna tarea, para filtrar en «Todas las tareas». */
+  get asignadores(): { id: string; nombre: string }[] {
+    const mapa = new Map(this.todas.map((t) => [t.asignadoPor.id, t.asignadoPor.nombre] as const));
+    return [...mapa].map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre));
   }
 
   cambiarFiltroPersonal(filtro: FiltroPersonal): void {
@@ -413,7 +446,7 @@ export class RrhhTareasComponent implements OnInit {
 
   get responsables(): { id: string; nombre: string }[] {
     const mapa = new Map<string, string>();
-    for (const t of this.asignadas.filter((x) => pasaFiltroPersonal(x.asignadoA, this.filtroPersonal))) mapa.set(t.asignadoA.id, t.asignadoA.nombre);
+    for (const t of this.lista) mapa.set(t.asignadoA.id, t.asignadoA.nombre);
     return [...mapa].map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre));
   }
 
@@ -431,12 +464,12 @@ export class RrhhTareasComponent implements OnInit {
 
   get filtradas(): TareaApi[] {
     const q = this.busqueda.trim().toLowerCase();
-    const sinResp = new Set(this.sinResponsable.map((t) => t.id));
     return this.lista.filter((t) =>
       (!q || t.titulo.toLowerCase().includes(q) || t.descripcion.toLowerCase().includes(q) || t.numero.toLowerCase().includes(q)) &&
       (!this.filtroPersona || t.asignadoA.id === this.filtroPersona) &&
+      (!this.filtroAsignador || t.asignadoPor.id === this.filtroAsignador) &&
       (!this.filtroEstado ||
-        (this.filtroEstado === 'VENCIDA' ? t.vencida : this.filtroEstado === 'SIN_RESPONSABLE' ? sinResp.has(t.id) : t.estado === this.filtroEstado)),
+        (this.filtroEstado === 'VENCIDA' ? t.vencida : this.filtroEstado === 'SIN_RESPONSABLE' ? t.estado === 'PENDIENTE' && !t.asignadoA.activo : t.estado === this.filtroEstado)),
     );
   }
 
@@ -445,9 +478,9 @@ export class RrhhTareasComponent implements OnInit {
   etiquetaEvento(a: string): string { return ETIQUETA_EVENTO[a] ?? a; }
   adjuntosDe(t: TareaApi, etapa: 'ASIGNACION' | 'RESPUESTA') { return t.adjuntos.filter((a) => a.etapa === etapa); }
 
-  /** Quien asignó la tarea o un administrador. */
+  /** Solo quien asignó la tarea. */
   puedeGestionar(t: TareaApi): boolean {
-    return t.asignadoPor.id === this.auth.currentUserValue?.id || this.puede('funcion.administrador');
+    return t.asignadoPor.id === this.auth.currentUserValue?.id;
   }
 
   /** Motivo de la última devolución, si la tarea fue devuelta. */
@@ -466,6 +499,7 @@ export class RrhhTareasComponent implements OnInit {
     const cambiar = (l: TareaApi[]) => l.map((x) => (x.id === t.id ? t : x));
     this.mias = cambiar(this.mias);
     this.asignadas = cambiar(this.asignadas);
+    this.todas = cambiar(this.todas);
     if (this.detalle?.id === t.id) this.detalle = t;
     if (this.verAsignadas) this.api.sinResponsable().subscribe({ next: (l) => (this.sinResponsable = l) });
   }
@@ -495,6 +529,7 @@ export class RrhhTareasComponent implements OnInit {
           this.enviando = false;
           this.nueva.abierta = false;
           this.asignadas = [t, ...this.asignadas];
+          if (this.verTodas) this.todas = [t, ...this.todas];
           this.toast.success('Tarea asignada', `${t.asignadoA.nombre} la verá como pendiente.`);
         },
         error: (e) => { this.enviando = false; this.errorNueva = mensajeDe(e, 'No se pudo asignar la tarea.'); },
